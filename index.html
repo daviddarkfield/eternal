@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>ETERNAL — DARKFIELD</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; padding: 0;
+      background: #000; color: #fff;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      line-height: 1.45;
+    }
+    .wrap {
+      max-width: 740px;
+      margin: 0 auto;
+      padding: 28px 18px 40px;
+    }
+    h1 { font-size: 30px; letter-spacing: 0.08em; margin: 0 0 18px; }
+    .small { opacity: 0.85; font-size: 13px; }
+    .card {
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 14px;
+      padding: 18px;
+      margin-top: 18px;
+      background: rgba(255,255,255,0.03);
+    }
+    .btn {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.35);
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-size: 16px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn:hover { background: rgba(255,255,255,0.12); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .hr { height: 1px; background: rgba(255,255,255,0.14); margin: 16px 0; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    .pill {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.25);
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    .progress {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.22);
+      overflow: hidden;
+      background: rgba(255,255,255,0.05);
+    }
+    .progress > div {
+      height: 100%;
+      width: 0%;
+      background: rgba(255,255,255,0.85);
+      transition: width 0.15s linear;
+    }
+
+    /* Modal */
+    .modalBack {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.72);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+    }
+    .modal {
+      max-width: 560px;
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 16px;
+      padding: 18px;
+      background: #070707;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    }
+    .modal h2 { margin: 0 0 10px; font-size: 18px; }
+    .modal p { margin: 0 0 14px; opacity: 0.9; }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <h1>ETERNAL</h1>
+    <div class="small">DARKFIELD</div>
+
+    <div class="card" id="publicCard">
+      <p><strong>A SHOW FOR ONE PERSON ALONE IN THEIR BED.</strong><br/>
+      It explores the temptation of eternal life and what price you would pay to achieve it.</p>
+
+      <p class="small">“I want you to believe... to believe in things that you cannot.” — Bram Stoker</p>
+
+      <div class="hr"></div>
+
+      <p>
+        You have been chosen and we thank you for your sacrifice.
+        In return we offer you the opportunity for eternal life — but there are conditions.
+      </p>
+
+      <p class="small">
+        ETERNAL is an immersive audio experience for one person, alone in their bed.
+        Commissioned by the 2020 Bram Stoker Festival, Dublin.
+      </p>
+
+      <div class="row" style="margin-top:14px;">
+        <button class="btn" id="buyBtn">Listen now ($1)</button>
+        <span class="pill" id="statePill">Locked</span>
+      </div>
+    </div>
+
+    <div class="card" id="paidCard" style="display:none;">
+      <div class="row" style="justify-content:space-between;">
+        <div><strong>Unlocked</strong></div>
+        <div class="pill" id="paidPill">Pass active</div>
+      </div>
+
+      <div class="hr"></div>
+
+      <p><strong>Before you begin</strong></p>
+      <ul>
+        <li>Listen with headphones.</li>
+        <li>Get into bed. Alone.</li>
+        <li>Lock the door. Silence your phone.</li>
+        <li>This is scary.</li>
+      </ul>
+
+      <p class="small">
+        When you press play, the audio will run to the end. If your device or browser interrupts playback,
+        you can return and try again (until you complete it once, within 24 hours).
+      </p>
+
+      <div class="row" style="margin-top:14px;">
+        <button class="btn" id="playBtn">Play</button>
+        <span class="pill mono" id="sessionTag" style="display:none;"></span>
+      </div>
+
+      <div style="margin-top:14px; display:none;" id="downloadBox">
+        <div class="small" id="downloadLabel">Downloading…</div>
+        <div class="progress" style="margin-top:8px;"><div id="bar"></div></div>
+      </div>
+
+      <div style="margin-top:14px; display:none;" id="playingBox">
+        <div class="pill">Playing…</div>
+        <div class="small" style="margin-top:8px;">Keep this tab open. Do not refresh.</div>
+      </div>
+
+      <div style="margin-top:14px; display:none;" id="doneBox">
+        <div class="pill">Completed</div>
+        <div class="small" style="margin-top:8px;">Thank you. This experience cannot be replayed.</div>
+      </div>
+
+      <audio id="player" preload="none"></audio>
+    </div>
+  </div>
+
+  <div class="modalBack" id="modalBack" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2>Final warning</h2>
+      <p>
+        This experience will play through to the end.<br/>
+        You cannot pause or restart it once it begins.
+      </p>
+      <div class="row">
+        <button class="btn" id="confirmBtn">I understand. Begin.</button>
+        <button class="btn" id="cancelBtn">Not yet</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const qs = new URLSearchParams(location.search);
+  const sessionId = qs.get("session_id");
+
+  const publicCard = document.getElementById("publicCard");
+  const paidCard = document.getElementById("paidCard");
+  const buyBtn = document.getElementById("buyBtn");
+  const playBtn = document.getElementById("playBtn");
+  const statePill = document.getElementById("statePill");
+  const paidPill = document.getElementById("paidPill");
+  const sessionTag = document.getElementById("sessionTag");
+
+  const modalBack = document.getElementById("modalBack");
+  const confirmBtn = document.getElementById("confirmBtn");
+  const cancelBtn = document.getElementById("cancelBtn");
+
+  const downloadBox = document.getElementById("downloadBox");
+  const downloadLabel = document.getElementById("downloadLabel");
+  const bar = document.getElementById("bar");
+
+  const playingBox = document.getElementById("playingBox");
+  const doneBox = document.getElementById("doneBox");
+
+  const audio = document.getElementById("player");
+  let wakeLock = null;
+
+  function showModal(onConfirm) {
+    modalBack.style.display = "flex";
+    confirmBtn.onclick = () => { modalBack.style.display = "none"; onConfirm(); };
+    cancelBtn.onclick = () => { modalBack.style.display = "none"; };
+  }
+
+  async function api(path, opts) {
+    const res = await fetch(path, {
+      ...opts,
+      headers: { "content-type": "application/json", ...(opts && opts.headers || {}) }
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(()=> "");
+      throw new Error(`API ${path} failed: ${res.status} ${t}`);
+    }
+    return res.json();
+  }
+
+  async function refreshStatus() {
+    if (!sessionId) return { state: "locked" };
+    const s = await api(`/api/status?session_id=${encodeURIComponent(sessionId)}`, { method: "GET" });
+    return s;
+  }
+
+  function setUI(state) {
+    // state: locked | unpaid | paid | consumed | expired
+    if (!sessionId) {
+      statePill.textContent = "Locked";
+      publicCard.style.display = "";
+      paidCard.style.display = "none";
+      return;
+    }
+
+    sessionTag.style.display = "";
+    sessionTag.textContent = `session: ${sessionId.slice(0, 10)}…`;
+
+    if (state === "paid") {
+      statePill.textContent = "Unlocked";
+      publicCard.style.display = "none";
+      paidCard.style.display = "";
+      paidPill.textContent = "Pass active (24h)";
+      playBtn.disabled = false;
+    } else if (state === "consumed") {
+      statePill.textContent = "Completed";
+      publicCard.style.display = "none";
+      paidCard.style.display = "";
+      paidPill.textContent = "Pass consumed";
+      playBtn.disabled = true;
+      doneBox.style.display = "";
+    } else if (state === "expired") {
+      statePill.textContent = "Expired";
+      publicCard.style.display = "";
+      paidCard.style.display = "none";
+    } else {
+      statePill.textContent = "Processing…";
+      publicCard.style.display = "";
+      paidCard.style.display = "none";
+    }
+  }
+
+  buyBtn.addEventListener("click", async () => {
+    buyBtn.disabled = true;
+    try {
+      const out = await api("/api/create-checkout", { method: "POST", body: JSON.stringify({}) });
+      location.href = out.url;
+    } catch (e) {
+      alert("Payment setup failed. Please try again.");
+      buyBtn.disabled = false;
+      console.error(e);
+    }
+  });
+
+  async function acquireWakeLock() {
+    try {
+      if ("wakeLock" in navigator) {
+        wakeLock = await navigator.wakeLock.request("screen");
+        wakeLock.addEventListener("release", () => {});
+      }
+    } catch (_) {}
+  }
+
+  async function downloadAudioToBlobUrl() {
+    downloadBox.style.display = "";
+    downloadLabel.textContent = "Downloading…";
+    bar.style.width = "0%";
+
+    const res = await fetch(`/api/audio?session_id=${encodeURIComponent(sessionId)}`, { method: "GET" });
+    if (!res.ok) throw new Error("Audio download failed");
+
+    const total = Number(res.headers.get("content-length") || "0");
+    const reader = res.body.getReader();
+    let received = 0;
+    const chunks = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.byteLength;
+
+      if (total > 0) {
+        const pct = Math.max(0, Math.min(100, (received / total) * 100));
+        bar.style.width = pct.toFixed(1) + "%";
+        downloadLabel.textContent = `Downloading… ${Math.round(pct)}%`;
+      } else {
+        // Unknown size (still show activity)
+        bar.style.width = "40%";
+      }
+    }
+
+    bar.style.width = "100%";
+    downloadLabel.textContent = "Ready";
+
+    const blob = new Blob(chunks, { type: "audio/mp4" }); // m4a container
+    return URL.createObjectURL(blob);
+  }
+
+  function attachAntiPause() {
+    // Best effort. (Lock-screen pauses on some devices may still happen momentarily.)
+    audio.addEventListener("pause", () => {
+      if (!audio.ended) {
+        // Try to resume quickly
+        audio.play().catch(()=>{});
+      }
+    });
+
+    // If tab loses visibility, some browsers pause; we try to resume when visible again.
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && !audio.ended) {
+        audio.play().catch(()=>{});
+      }
+    });
+  }
+
+  async function markCompleted() {
+    try {
+      await api("/api/complete", {
+        method: "POST",
+        body: JSON.stringify({ session_id: sessionId })
+      });
+    } catch (e) {
+      // Not fatal for user-facing flow; they’ll likely be marked by next refresh.
+      console.error(e);
+    }
+  }
+
+  async function beginPlayback() {
+    playBtn.disabled = true;
+    await acquireWakeLock();
+
+    const blobUrl = await downloadAudioToBlobUrl();
+
+    downloadBox.style.display = "none";
+    playingBox.style.display = "";
+    doneBox.style.display = "none";
+
+    audio.src = blobUrl;
+    audio.controls = false;
+    audio.loop = false;
+
+    attachAntiPause();
+
+    audio.addEventListener("ended", async () => {
+      playingBox.style.display = "none";
+      doneBox.style.display = "";
+      try { if (wakeLock) await wakeLock.release(); } catch(_) {}
+      await markCompleted();
+      // Also update UI state
+      setUI("consumed");
+    }, { once: true });
+
+    // Start (must be user-gesture initiated — we call from confirm button)
+    await audio.play();
+  }
+
+  playBtn.addEventListener("click", () => {
+    showModal(() => beginPlayback().catch(e => {
+      console.error(e);
+      alert("Could not start playback. Please try again.");
+      playBtn.disabled = false;
+      downloadBox.style.display = "none";
+      playingBox.style.display = "none";
+    }));
+  });
+
+  // Boot
+  (async () => {
+    if (!sessionId) {
+      setUI("locked");
+      return;
+    }
+    try {
+      const s = await refreshStatus();
+      setUI(s.state);
+    } catch (e) {
+      console.error(e);
+      setUI("unpaid");
+    }
+  })();
+})();
+</script>
+</body>
+</html>
