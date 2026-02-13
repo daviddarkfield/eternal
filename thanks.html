@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>ETERNAL — Thank you</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; padding: 0;
+      background: #000; color: #fff;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      line-height: 1.45;
+    }
+    .wrap { max-width: 740px; margin: 0 auto; padding: 28px 18px 40px; }
+    h1 { font-size: 26px; letter-spacing: 0.06em; margin: 0 0 10px; }
+    .small { opacity: 0.85; font-size: 13px; }
+    .card {
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 14px;
+      padding: 18px;
+      margin-top: 18px;
+      background: rgba(255,255,255,0.03);
+    }
+    .hr { height: 1px; background: rgba(255,255,255,0.14); margin: 16px 0; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    input[type="email"]{
+      width: min(420px, 100%);
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      outline: none;
+      font-size: 16px;
+    }
+    .btn {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.35);
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-size: 16px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn:hover { background: rgba(255,255,255,0.12); }
+    a { color: rgba(255,255,255,0.9); }
+    .pill {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,255,140,0.35);
+      font-size: 12px;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <h1>ETERNAL</h1>
+    <div class="small">DARKFIELD</div>
+
+    <div class="card">
+      <div class="pill">Completed</div>
+      <div class="hr"></div>
+
+      <p><strong>Thank you.</strong></p>
+      <p class="small">If you’d like to hear about new work, join our mailing list.</p>
+
+      <!--
+        MAILCHIMP:
+        Replace ACTION_URL and HIDDEN_FIELDS with the exact bits from your Mailchimp “Embedded form” code.
+
+        In Mailchimp: Audience → Signup forms → Embedded forms → Copy the form HTML.
+        You’ll get:
+          - an action="https://xxxx.list-manage.com/subscribe/post?u=...&amp;id=..."
+          - hidden inputs (often “u” and “id” already baked into the action)
+          - a field name like name="EMAIL"
+      -->
+      <form
+        action="ACTION_URL_FROM_MAILCHIMP"
+        method="post"
+        target="_blank"
+        novalidate
+        style="margin-top:14px;"
+      >
+        <div class="row">
+          <input type="email" name="EMAIL" placeholder="Email address" required />
+          <button class="btn" type="submit">Join the mailing list</button>
+        </div>
+
+        <!-- Optional Mailchimp bot-trap / hidden field (put the one from Mailchimp here) -->
+        <!-- <div style="position:absolute; left:-5000px;" aria-hidden="true">
+          <input type="text" name="b_xxxxx_xxxxx" tabindex="-1" value="">
+        </div> -->
+
+        <p class="small" style="margin-top:10px;">
+          We’ll only email you about DARKFIELD work. Unsubscribe any time.
+        </p>
+      </form>
+
+      <div class="hr"></div>
+
+      <p class="small">
+        Follow on Instagram:
+        <a href="https://instagram.com/darkfield" target="_blank" rel="noopener noreferrer">@darkfield</a>
+      </p>
+
+      <p class="small">
+        <a href="/" style="opacity:0.85;">Back to ETERNAL</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>
