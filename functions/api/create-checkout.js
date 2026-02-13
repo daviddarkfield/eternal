@@ -7,7 +7,7 @@ export async function onRequestPost({ request, env }) {
 
   const stripeKey = env.STRIPE_SECRET_KEY;
   if (!stripeKey) {
-    return new Response(JSON.stringify({ error: "Missing STRIPE_SECRET_KEY" }), {
+    return new Response(JSON.stringify({ error: "sk_test_51HUu4GKNaxdJ4EqdiqSVyAoVLiVlm50axmi00nJzwsLDAGk5TgJdHzhJZotnUBbXzcVXY10y2YD0J7X2bRp8BBGY00c4xeUkUU" }), {
       status: 500,
       headers: { "content-type": "application/json" },
     });
