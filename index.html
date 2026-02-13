@@ -152,6 +152,7 @@
         <button class="btn" id="resetBtn" style="display:none;">Reset (testing)</button>
       </div>
 
+      <!-- Kept for UI continuity, but no longer used (we stream directly) -->
       <div style="margin-top:14px; display:none;" id="downloadBox">
         <div class="small" id="downloadLabel">Downloading…</div>
         <div class="progress" style="margin-top:8px;"><div id="bar"></div></div>
@@ -167,7 +168,7 @@
         <div class="small" style="margin-top:8px;">Thank you. This experience cannot be replayed on this browser.</div>
       </div>
 
-      <audio id="player" preload="none"></audio>
+      <audio id="player" preload="none" playsinline></audio>
     </div>
   </div>
 
@@ -208,6 +209,7 @@
   const confirmBtn = document.getElementById("confirmBtn");
   const cancelBtn = document.getElementById("cancelBtn");
 
+  // (no longer used, but kept)
   const downloadBox = document.getElementById("downloadBox");
   const downloadLabel = document.getElementById("downloadLabel");
   const bar = document.getElementById("bar");
@@ -257,7 +259,6 @@
   }
 
   function setUIFromState(apiState) {
-    // Backend returns: { ok, state: "unlocked"|"locked"|... }
     if (!sessionId) {
       statePill.textContent = "Locked";
       statePill.className = "pill";
@@ -271,7 +272,6 @@
     sessionTag.textContent = `session: ${sessionId.slice(0, 10)}…`;
 
     if (isCompleted()) {
-      // Completed locally (simple mode)
       statePill.textContent = "Completed";
       statePill.className = "pill ok";
       publicCard.style.display = "none";
@@ -293,12 +293,8 @@
       playBtn.disabled = false;
       doneBox.style.display = "none";
 
-      // Clean the URL (remove session_id) after unlock is confirmed (keeps it tidy)
-      const u = new URL(location.href);
-      if (u.searchParams.get("session_id")) {
-        u.searchParams.delete("session_id");
-        history.replaceState({}, "", u.toString());
-      }
+      // Keep the session_id in the URL (do NOT remove it).
+      // If you remove it, /api/audio will later be missing session_id.
       return;
     }
 
@@ -311,7 +307,6 @@
       return;
     }
 
-    // fallback
     statePill.textContent = "Processing…";
     statePill.className = "pill";
     publicCard.style.display = "";
@@ -339,42 +334,6 @@
     } catch (_) {}
   }
 
-  async function downloadAudioToBlobUrl() {
-    downloadBox.style.display = "";
-    downloadLabel.textContent = "Downloading…";
-    bar.style.width = "0%";
-
-    // IMPORTANT: include session_id
-    const res = await fetch(`/api/audio?session_id=${encodeURIComponent(sessionId)}`, { method: "GET" });
-    if (!res.ok) throw new Error("Audio download failed");
-
-    const total = Number(res.headers.get("content-length") || "0");
-    const reader = res.body.getReader();
-    let received = 0;
-    const chunks = [];
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      received += value.byteLength;
-
-      if (total > 0) {
-        const pct = Math.max(0, Math.min(100, (received / total) * 100));
-        bar.style.width = pct.toFixed(1) + "%";
-        downloadLabel.textContent = `Downloading… ${Math.round(pct)}%`;
-      } else {
-        bar.style.width = "40%";
-      }
-    }
-
-    bar.style.width = "100%";
-    downloadLabel.textContent = "Ready";
-
-    const blob = new Blob(chunks, { type: "audio/mp4" });
-    return URL.createObjectURL(blob);
-  }
-
   function attachAntiPause() {
     audio.addEventListener("pause", () => {
       if (!audio.ended) audio.play().catch(()=>{});
@@ -390,7 +349,6 @@
       if (!audio.seeking) lastTime = audio.currentTime;
     });
     audio.addEventListener("seeking", () => {
-      // snap back
       audio.currentTime = lastTime || 0;
     });
   }
@@ -398,16 +356,21 @@
   async function beginPlayback() {
     if (isCompleted()) return;
 
+    if (!sessionId) {
+      alert("Missing session_id. Please return to the link you received after payment.");
+      playBtn.disabled = false;
+      return;
+    }
+
     playBtn.disabled = true;
     await acquireWakeLock();
 
-    const blobUrl = await downloadAudioToBlobUrl();
-
+    // STREAM DIRECTLY (no fetch-to-blob). Avoids CORS/redirect issues.
     downloadBox.style.display = "none";
     playingBox.style.display = "";
     doneBox.style.display = "none";
 
-    audio.src = blobUrl;
+    audio.src = `/api/audio?session_id=${encodeURIComponent(sessionId)}`;
     audio.controls = false;
     audio.loop = false;
 
@@ -418,10 +381,7 @@
       doneBox.style.display = "";
       try { if (wakeLock) await wakeLock.release(); } catch(_) {}
 
-      // Simple mode: local completion only
       markCompletedLocal();
-
-      // Update UI immediately
       setUIFromState({ state: "unlocked" });
     }, { once: true });
 
@@ -442,7 +402,6 @@
   // Boot
   (async () => {
     if (!sessionId) {
-      // no session_id: normal locked landing page
       setUIFromState({ state: "locked" });
       return;
     }
@@ -452,7 +411,6 @@
       setUIFromState(s);
     } catch (e) {
       console.error(e);
-      // still show processing/locked rather than failing hard
       setUIFromState({ state: "locked" });
       publicHint.textContent = "Could not verify payment right now. Please refresh.";
     }
