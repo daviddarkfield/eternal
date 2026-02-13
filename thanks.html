@@ -13,8 +13,8 @@
       line-height:1.45;
     }
     .wrap{ max-width:740px; margin:0 auto; padding:28px 18px 40px; }
-    h1{ font-size:26px; letter-spacing:0.06em; margin:0 0 10px; }
-    .small{ opacity:0.85; font-size:13px; }
+    h1{ font-size:30px; letter-spacing:0.08em; margin:0 0 10px; }
+    .small{ opacity:.85; font-size:13px; }
     .card{
       border:1px solid rgba(255,255,255,0.18);
       border-radius:14px;
@@ -23,18 +23,11 @@
       background:rgba(255,255,255,0.03);
     }
     .hr{ height:1px; background:rgba(255,255,255,0.14); margin:16px 0; }
-    .pill{
-      display:inline-block;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid rgba(0,255,140,0.35);
-      font-size:12px;
-      opacity:0.9;
-    }
-    .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    a{ color:#fff; text-decoration:underline; }
+    label{ display:block; margin:10px 0 6px; font-size:14px; opacity:.9; }
     input[type="email"]{
-      width:min(420px, 100%);
-      padding:12px 14px;
+      width:100%;
+      padding:12px 12px;
       border-radius:10px;
       border:1px solid rgba(255,255,255,0.25);
       background:rgba(255,255,255,0.06);
@@ -42,6 +35,7 @@
       outline:none;
       font-size:16px;
     }
+    .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
     .btn{
       appearance:none;
       border:1px solid rgba(255,255,255,0.35);
@@ -56,76 +50,61 @@
       gap:10px;
     }
     .btn:hover{ background:rgba(255,255,255,0.12); }
-    a{ color:rgba(255,255,255,0.9); }
-    label{ cursor:pointer; }
-    .checkboxRow{
-      display:flex;
-      gap:10px;
-      align-items:flex-start;
+    .checkbox{
+      display:flex; gap:10px; align-items:flex-start;
       margin-top:12px;
-      opacity:0.95;
     }
-    .checkboxRow input{ margin-top:3px; }
+    .checkbox input{ margin-top:3px; }
+    .note{ font-size:12px; opacity:.8; margin-top:12px; }
   </style>
 </head>
-
 <body>
   <div class="wrap">
     <h1>ETERNAL</h1>
     <div class="small">DARKFIELD</div>
 
     <div class="card">
-      <div class="pill">Completed</div>
-      <div class="hr"></div>
-
       <p><strong>Thank you.</strong></p>
       <p class="small">If you’d like to hear about new work, join our mailing list.</p>
 
-      <!-- Mailchimp embed (clean + minimal, same action/fields you pasted) -->
+      <div class="hr"></div>
+
+      <!-- Mailchimp: minimal embed (posts to your list) -->
       <form
         action="https://darkfield.us16.list-manage.com/subscribe/post?u=d9c850c687cb412006dc377a4&amp;id=9c037aeff3&amp;f_id=00eb35e0f0"
         method="post"
         target="_blank"
         novalidate
-        style="margin-top:14px;"
       >
-        <div class="row">
-          <input type="email" name="EMAIL" placeholder="Email address" required />
-          <button class="btn" type="submit">Join the mailing list</button>
-        </div>
+        <label for="mce-EMAIL">Email address <span aria-hidden="true">*</span></label>
+        <input type="email" name="EMAIL" id="mce-EMAIL" required />
 
-        <!-- GDPR permission (from your embed). Make it required to avoid Mailchimp rejecting silently. -->
-        <div class="checkboxRow">
+        <div class="checkbox">
           <input type="checkbox" id="gdpr_4727" name="gdpr[4727]" value="Y" required />
-          <label for="gdpr_4727">
-            I agree to receive email updates from DARKFIELD.
+          <label for="gdpr_4727" style="margin:0;">
+            I agree to receive emails from DARKFIELD.
           </label>
         </div>
 
-        <!-- Tag you included -->
-        <input type="hidden" name="tags" value="4538266">
+        <!-- Tag from your embed -->
+        <input type="hidden" name="tags" value="4538266" />
 
-        <!-- Bot-trap field from your embed -->
+        <!-- Honeypot (Mailchimp bot trap) -->
         <div aria-hidden="true" style="position:absolute; left:-5000px;">
-          <input type="text" name="b_d9c850c687cb412006dc377a4_9c037aeff3" tabindex="-1" value="">
+          <input type="text" name="b_d9c850c687cb412006dc377a4_9c037aeff3" tabindex="-1" value="" />
         </div>
 
-        <p class="small" style="margin-top:10px;">
-          Unsubscribe any time. For more information see our privacy practices at
-          <a href="https://darkfield.org" target="_blank" rel="noopener noreferrer">darkfield.org</a>.
+        <div class="row" style="margin-top:14px;">
+          <button class="btn" type="submit">Join the mailing list</button>
+          <a class="btn" href="https://www.instagram.com/darkfield/" target="_blank" rel="noopener noreferrer">
+            Follow on Instagram
+          </a>
+        </div>
+
+        <p class="note">
+          We use Mailchimp as our marketing platform. By subscribing, you acknowledge your information will be transferred to Mailchimp for processing.
         </p>
       </form>
-
-      <div class="hr"></div>
-
-      <p class="small">
-        Follow on Instagram:
-        <a href="https://instagram.com/darkfield" target="_blank" rel="noopener noreferrer">@darkfield</a>
-      </p>
-
-      <p class="small">
-        <a href="/" style="opacity:0.85;">Back to ETERNAL</a>
-      </p>
     </div>
   </div>
 </body>
