@@ -1,30 +1,50 @@
-export async function onRequestGet({ env, request }) {
+// functions/api/audio.js
+export async function onRequestGet({ request, env }) {
+  try {
     const url = new URL(request.url);
-    const sessionId = url.searchParams.get("session_id");
-    if (!sessionId) return new Response("Missing session_id", { status: 400 });
-  
-    const key = `eternal:session:${sessionId}`;
-    const raw = await env.ETERNAL_KV.get(key);
-    if (!raw) return new Response("Not paid", { status: 402 });
-  
-    const rec = JSON.parse(raw);
-    const now = Date.now();
-  
-    if (rec.completedAt && rec.completedAt > 0) return new Response("Consumed", { status: 403 });
-    if (rec.expiresAt && now > rec.expiresAt) return new Response("Expired", { status: 403 });
-  
-    // Fetch from R2 (store object as "eternal.m4a")
-    const obj = await env.ETERNAL_R2.get("eternal.m4a");
-    if (!obj) return new Response("Audio missing", { status: 500 });
-  
-    const headers = new Headers();
-    headers.set("Content-Type", "audio/mp4");
-    headers.set("Cache-Control", "no-store");
-    if (obj.httpEtag) headers.set("ETag", obj.httpEtag);
-  
-    // Content-Length helps progress bar
-    if (obj.size != null) headers.set("Content-Length", String(obj.size));
-  
-    return new Response(obj.body, { headers });
+    const sessionId = (url.searchParams.get("session_id") || "").trim();
+
+    if (!sessionId) {
+      return json({ ok: false, error: "Missing session_id" }, 400);
+    }
+
+    const stripeKey = (env.STRIPE_SECRET_KEY || "").trim();
+    if (!stripeKey) {
+      return json({ ok: false, error: "Missing STRIPE_SECRET_KEY env var" }, 500);
+    }
+
+    const audioUrl = (env.AUDIO_URL || "").trim();
+    if (!audioUrl) {
+      return json({ ok: false, error: "Missing AUDIO_URL env var" }, 500);
+    }
+
+    const resp = await fetch(
+      `https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(sessionId)}`,
+      { headers: { Authorization: `Bearer ${stripeKey}` } }
+    );
+
+    const raw = await resp.text();
+    let data;
+    try { data = raw ? JSON.parse(raw) : {}; } catch { data = { raw }; }
+
+    if (!resp.ok) {
+      return json({ ok: false, error: "Stripe request failed", stripe: data }, 502);
+    }
+
+    if (data?.payment_status !== "paid") {
+      return json({ ok: false, error: "Not paid", payment_status: data?.payment_status || null }, 403);
+    }
+
+    return Response.redirect(audioUrl, 302);
+
+  } catch (err) {
+    return json({ ok: false, error: String(err?.message || err) }, 500);
   }
-  
+}
+
+function json(obj, status = 200) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
