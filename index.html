@@ -376,14 +376,17 @@
 
     attachAntiPause();
 
-    audio.addEventListener("ended", async () => {
-      playingBox.style.display = "none";
-      doneBox.style.display = "";
-      try { if (wakeLock) await wakeLock.release(); } catch(_) {}
+audio.addEventListener("ended", async () => {
+  playingBox.style.display = "none";
+  doneBox.style.display = "";
+  try { if (wakeLock) await wakeLock.release(); } catch(_) {}
 
-      markCompletedLocal();
-      setUIFromState({ state: "unlocked" });
-    }, { once: true });
+  markCompletedLocal();
+
+  // Send them to the mailing list page
+  location.href = "/thanks.html";
+}, { once: true });
+
 
     await audio.play();
   }
