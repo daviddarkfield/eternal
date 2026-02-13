@@ -12,11 +12,7 @@
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       line-height: 1.45;
     }
-    .wrap {
-      max-width: 740px;
-      margin: 0 auto;
-      padding: 28px 18px 40px;
-    }
+    .wrap { max-width: 740px; margin: 0 auto; padding: 28px 18px 40px; }
     h1 { font-size: 30px; letter-spacing: 0.08em; margin: 0 0 18px; }
     .small { opacity: 0.85; font-size: 13px; }
     .card {
@@ -54,21 +50,6 @@
     }
     .pill.ok { border-color: rgba(0,255,140,0.35); }
     .pill.bad { border-color: rgba(255,70,70,0.45); }
-
-    .progress {
-      width: 100%;
-      height: 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.22);
-      overflow: hidden;
-      background: rgba(255,255,255,0.05);
-    }
-    .progress > div {
-      height: 100%;
-      width: 0%;
-      background: rgba(255,255,255,0.85);
-      transition: width 0.15s linear;
-    }
 
     /* Modal */
     .modalBack {
@@ -117,7 +98,7 @@
       </p>
 
       <div class="row" style="margin-top:14px;">
-        <button class="btn" id="buyBtn">Listen now ($1)</button>
+        <button class="btn" id="buyBtn">Listen now ($1.99)</button>
         <span class="pill" id="statePill">Locked</span>
       </div>
 
@@ -150,12 +131,7 @@
         <button class="btn" id="playBtn">Play</button>
         <span class="pill mono" id="sessionTag" style="display:none;"></span>
         <button class="btn" id="resetBtn" style="display:none;">Reset (testing)</button>
-      </div>
-
-      <!-- Kept for UI continuity, but no longer used (we stream directly) -->
-      <div style="margin-top:14px; display:none;" id="downloadBox">
-        <div class="small" id="downloadLabel">Downloading…</div>
-        <div class="progress" style="margin-top:8px;"><div id="bar"></div></div>
+        <button class="btn" id="previewThanksBtn" style="display:none;">Preview thanks</button>
       </div>
 
       <div style="margin-top:14px; display:none;" id="playingBox">
@@ -165,7 +141,7 @@
 
       <div style="margin-top:14px; display:none;" id="doneBox">
         <div class="pill ok">Completed</div>
-        <div class="small" style="margin-top:8px;">Thank you. This experience cannot be replayed on this browser.</div>
+        <div class="small" style="margin-top:8px;">Redirecting…</div>
       </div>
 
       <audio id="player" preload="none" playsinline></audio>
@@ -192,14 +168,20 @@
   // One completion per browser. If they close early, they can come back and try again.
   const LS_COMPLETED_AT = "eternal_completed_at_v1";
 
+  // Price label (UI only). Make sure your Stripe create-checkout uses unit_amount=199.
+  const PRICE_LABEL = "$1.99";
+
   const qs = new URLSearchParams(location.search);
   const sessionId = qs.get("session_id");
+  const previewThanks = qs.get("preview") === "thanks";
 
   const publicCard = document.getElementById("publicCard");
   const paidCard = document.getElementById("paidCard");
   const buyBtn = document.getElementById("buyBtn");
   const playBtn = document.getElementById("playBtn");
   const resetBtn = document.getElementById("resetBtn");
+  const previewThanksBtn = document.getElementById("previewThanksBtn");
+
   const statePill = document.getElementById("statePill");
   const paidPill = document.getElementById("paidPill");
   const sessionTag = document.getElementById("sessionTag");
@@ -209,16 +191,21 @@
   const confirmBtn = document.getElementById("confirmBtn");
   const cancelBtn = document.getElementById("cancelBtn");
 
-  // (no longer used, but kept)
-  const downloadBox = document.getElementById("downloadBox");
-  const downloadLabel = document.getElementById("downloadLabel");
-  const bar = document.getElementById("bar");
-
   const playingBox = document.getElementById("playingBox");
   const doneBox = document.getElementById("doneBox");
 
   const audio = document.getElementById("player");
   let wakeLock = null;
+
+  // Set price text on the button
+  buyBtn.textContent = `Listen now (${PRICE_LABEL})`;
+
+  // Quick preview without listening:
+  // /?preview=thanks will jump to thanks page (handy for testing)
+  if (previewThanks) {
+    location.replace("/thanks.html");
+    return;
+  }
 
   function isCompleted() {
     return Number(localStorage.getItem(LS_COMPLETED_AT) || "0") > 0;
@@ -228,13 +215,17 @@
     localStorage.setItem(LS_COMPLETED_AT, String(Date.now()));
   }
 
-  // show reset button only for you (optional)
+  // show reset + preview buttons only on pages.dev (optional)
   if (location.hostname.includes("pages.dev")) {
     resetBtn.style.display = "";
+    previewThanksBtn.style.display = "";
     resetBtn.addEventListener("click", () => {
       if (!confirm("Reset completed state on this browser?")) return;
       localStorage.removeItem(LS_COMPLETED_AT);
       location.reload();
+    });
+    previewThanksBtn.addEventListener("click", () => {
+      window.open("/thanks.html", "_blank");
     });
   }
 
@@ -274,11 +265,9 @@
     if (isCompleted()) {
       statePill.textContent = "Completed";
       statePill.className = "pill ok";
-      publicCard.style.display = "none";
-      paidCard.style.display = "";
-      paidPill.textContent = "Completed";
-      playBtn.disabled = true;
-      doneBox.style.display = "";
+      publicCard.style.display = "";
+      paidCard.style.display = "none";
+      publicHint.textContent = "This browser has completed the experience. Please purchase again to listen again.";
       return;
     }
 
@@ -292,9 +281,7 @@
       paidPill.textContent = "Ready";
       playBtn.disabled = false;
       doneBox.style.display = "none";
-
-      // Keep the session_id in the URL (do NOT remove it).
-      // If you remove it, /api/audio will later be missing session_id.
+      playingBox.style.display = "none";
       return;
     }
 
@@ -365,30 +352,26 @@
     playBtn.disabled = true;
     await acquireWakeLock();
 
-    // STREAM DIRECTLY (no fetch-to-blob). Avoids CORS/redirect issues.
-    downloadBox.style.display = "none";
     playingBox.style.display = "";
     doneBox.style.display = "none";
 
+    // STREAM DIRECTLY (no fetch-to-blob).
     audio.src = `/api/audio?session_id=${encodeURIComponent(sessionId)}`;
     audio.controls = false;
     audio.loop = false;
 
     attachAntiPause();
 
-audio.addEventListener("ended", async () => {
-  playingBox.style.display = "none";
-  doneBox.style.display = "";
-  try { if (wakeLock) await wakeLock.release(); } catch(_) {}
+    audio.addEventListener("ended", async () => {
+      playingBox.style.display = "none";
+      doneBox.style.display = "";
+      try { if (wakeLock) await wakeLock.release(); } catch(_) {}
 
-  markCompletedLocal();
-  setUIFromState({ state: "unlocked" });
+      markCompletedLocal();
 
-  // NEW: send to mailing list page
-  location.href = "/thanks.html";
-}, { once: true });
-
-
+      // Redirect to thanks page
+      location.href = "/thanks.html";
+    }, { once: true });
 
     await audio.play();
   }
@@ -399,7 +382,6 @@ audio.addEventListener("ended", async () => {
       console.error(e);
       alert("Could not start playback. Please try again.");
       playBtn.disabled = false;
-      downloadBox.style.display = "none";
       playingBox.style.display = "none";
     }));
   });
