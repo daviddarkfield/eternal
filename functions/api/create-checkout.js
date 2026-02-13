@@ -14,10 +14,12 @@ export async function onRequestPost({ request, env }) {
   body.set("success_url", successUrl);
   body.set("cancel_url", cancelUrl);
 
+  // 1 item @ $1.99 USD  (Stripe uses cents)
   body.set("line_items[0][quantity]", "1");
   body.set("line_items[0][price_data][currency]", "usd");
-  body.set("line_items[0][price_data][unit_amount]", "100");
+  body.set("line_items[0][price_data][unit_amount]", "199");
   body.set("line_items[0][price_data][product_data][name]", "ETERNAL — listen now");
+  body.set("metadata[product]", "ETERNAL");
 
   const resp = await fetch("https://api.stripe.com/v1/checkout/sessions", {
     method: "POST",
@@ -38,4 +40,3 @@ export async function onRequestPost({ request, env }) {
     headers: { "content-type": "application/json" },
   });
 }
-
