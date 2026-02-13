@@ -382,10 +382,12 @@ audio.addEventListener("ended", async () => {
   try { if (wakeLock) await wakeLock.release(); } catch(_) {}
 
   markCompletedLocal();
+  setUIFromState({ state: "unlocked" });
 
-  // Send them to the mailing list page
+  // NEW: send to mailing list page
   location.href = "/thanks.html";
 }, { once: true });
+
 
 
     await audio.play();
