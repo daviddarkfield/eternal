@@ -51,7 +51,21 @@
     .pill.ok { border-color: rgba(0,255,140,0.35); }
     .pill.bad { border-color: rgba(255,70,70,0.45); }
 
-    /* Modal */
+    .progress {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.22);
+      overflow: hidden;
+      background: rgba(255,255,255,0.05);
+    }
+    .progress > div {
+      height: 100%;
+      width: 0%;
+      background: rgba(255,255,255,0.85);
+      transition: width 0.15s linear;
+    }
+
     .modalBack {
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.72);
@@ -130,7 +144,6 @@
       <div class="row" style="margin-top:14px;">
         <button class="btn" id="playBtn">Play</button>
         <span class="pill mono" id="sessionTag" style="display:none;"></span>
-        <button class="btn" id="resetBtn" style="display:none;">Reset (testing)</button>
       </div>
 
       <div style="margin-top:14px; display:none;" id="playingBox">
@@ -140,7 +153,7 @@
 
       <div style="margin-top:14px; display:none;" id="doneBox">
         <div class="pill ok">Completed</div>
-        <div class="small" style="margin-top:8px;">Thank you. This experience cannot be replayed on this browser.</div>
+        <div class="small" style="margin-top:8px;">Thank you.</div>
       </div>
 
       <audio id="player" preload="none" playsinline></audio>
@@ -163,17 +176,21 @@
 
 <script>
 (() => {
-  // one completion per browser
+  // One completion per browser
   const LS_COMPLETED_AT = "eternal_completed_at_v1";
 
   const qs = new URLSearchParams(location.search);
-  const pi = qs.get("pi"); // PaymentIntent id
+
+  // We support either:
+  //   /?session_id=...
+  // or (Elements flow):
+  //   /?pi=pi_...
+  const sessionId = qs.get("session_id") || qs.get("pi");
 
   const publicCard = document.getElementById("publicCard");
   const paidCard = document.getElementById("paidCard");
   const buyBtn = document.getElementById("buyBtn");
   const playBtn = document.getElementById("playBtn");
-  const resetBtn = document.getElementById("resetBtn");
   const statePill = document.getElementById("statePill");
   const paidPill = document.getElementById("paidPill");
   const sessionTag = document.getElementById("sessionTag");
@@ -185,8 +202,8 @@
 
   const playingBox = document.getElementById("playingBox");
   const doneBox = document.getElementById("doneBox");
-
   const audio = document.getElementById("player");
+
   let wakeLock = null;
 
   function isCompleted() {
@@ -196,38 +213,28 @@
     localStorage.setItem(LS_COMPLETED_AT, String(Date.now()));
   }
 
-  // testing only
-  if (location.hostname.includes("pages.dev")) {
-    resetBtn.style.display = "";
-    resetBtn.addEventListener("click", () => {
-      if (!confirm("Reset completed state on this browser?")) return;
-      localStorage.removeItem(LS_COMPLETED_AT);
-      location.reload();
-    });
-  }
-
   function showModal(onConfirm) {
     modalBack.style.display = "flex";
     confirmBtn.onclick = () => { modalBack.style.display = "none"; onConfirm(); };
     cancelBtn.onclick = () => { modalBack.style.display = "none"; };
   }
 
-  async function apiJson(url) {
-    const res = await fetch(url, { method: "GET" });
+  async function apiJson(path, opts) {
+    const res = await fetch(path, opts);
     const text = await res.text().catch(()=> "");
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
-    if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`API ${path} failed: ${res.status} ${text}`);
     return data;
   }
 
   async function refreshStatus() {
-    if (!pi) return { ok: true, state: "locked" };
-    return apiJson(`/api/status?pi=${encodeURIComponent(pi)}`);
+    if (!sessionId) return { ok: true, state: "locked" };
+    return apiJson(`/api/status?session_id=${encodeURIComponent(sessionId)}`, { method: "GET" });
   }
 
-  function setUIFromState(apiState) {
-    if (!pi) {
+  function setUI(apiState) {
+    if (!sessionId) {
       statePill.textContent = "Locked";
       statePill.className = "pill";
       publicCard.style.display = "";
@@ -237,7 +244,7 @@
     }
 
     sessionTag.style.display = "";
-    sessionTag.textContent = `pi: ${pi.slice(0, 14)}…`;
+    sessionTag.textContent = `session: ${sessionId.slice(0, 10)}…`;
 
     if (isCompleted()) {
       statePill.textContent = "Completed";
@@ -263,6 +270,17 @@
       return;
     }
 
+    if (state === "consumed") {
+      statePill.textContent = "Completed";
+      statePill.className = "pill ok";
+      publicCard.style.display = "none";
+      paidCard.style.display = "";
+      paidPill.textContent = "Completed";
+      playBtn.disabled = true;
+      doneBox.style.display = "";
+      return;
+    }
+
     statePill.textContent = "Locked";
     statePill.className = "pill bad";
     publicCard.style.display = "";
@@ -270,8 +288,8 @@
     publicHint.textContent = "Payment not verified yet. If you just paid, wait a moment and refresh.";
   }
 
+  // IMPORTANT: Elements flow — go to our own payment page
   buyBtn.addEventListener("click", () => {
-    // Go to full-black ritual payment page
     location.href = "/pay.html";
   });
 
@@ -301,10 +319,8 @@
 
   async function beginPlayback() {
     if (isCompleted()) return;
-
-    if (!pi) {
-      alert("Missing payment token. Please return to the link you received after payment.");
-      playBtn.disabled = false;
+    if (!sessionId) {
+      alert("Missing session. Please return to the link after payment.");
       return;
     }
 
@@ -314,7 +330,7 @@
     playingBox.style.display = "";
     doneBox.style.display = "none";
 
-    audio.src = `/api/audio?pi=${encodeURIComponent(pi)}`;
+    audio.src = `/api/audio?session_id=${encodeURIComponent(sessionId)}`;
     audio.controls = false;
     audio.loop = false;
 
@@ -326,9 +342,17 @@
       try { if (wakeLock) await wakeLock.release(); } catch(_) {}
 
       markCompletedLocal();
-      setUIFromState({ state: "unlocked" });
 
-      // Go to post-show page
+      // mark on server (best effort)
+      try {
+        await apiJson("/api/complete", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ session_id: sessionId })
+        });
+      } catch (_) {}
+
+      // Go to thanks page
       location.href = "/thanks.html";
     }, { once: true });
 
@@ -345,21 +369,10 @@
     }));
   });
 
-  // Boot
   (async () => {
-    if (!pi) {
-      setUIFromState({ state: "locked" });
-      return;
-    }
-
-    try {
-      const s = await refreshStatus();
-      setUIFromState(s);
-    } catch (e) {
-      console.error(e);
-      setUIFromState({ state: "locked" });
-      publicHint.textContent = "Could not verify payment right now. Please refresh.";
-    }
+    if (!sessionId) { setUI({ state: "locked" }); return; }
+    try { setUI(await refreshStatus()); }
+    catch (e) { console.error(e); setUI({ state: "locked" }); }
   })();
 })();
 </script>
