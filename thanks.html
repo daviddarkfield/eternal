@@ -6,85 +6,74 @@
   <title>ETERNAL — Thanks</title>
   <style>
     :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+
     body{
       margin:0; background:#000; color:#fff;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       line-height:1.45;
     }
+
     .wrap{max-width:740px;margin:0 auto;padding:28px 18px 40px;}
-    h1{font-size:30px;letter-spacing:.08em;margin:0 0 18px;}
+    .head{ text-align:center; margin-bottom:6px; }
+    h1{font-size:30px;letter-spacing:.08em;margin:0 0 10px;}
     .small{opacity:.85;font-size:13px;}
+
     .card{
       border:1px solid rgba(255,255,255,.18);
       border-radius:14px;
       padding:18px;
       margin-top:18px;
       background:rgba(255,255,255,.03);
+      overflow:hidden;
     }
-    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
-    .input{
-      width:min(420px, 100%);
-      padding:12px 14px;
-      border-radius:12px;
+
+    .ig {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:14px 16px;
+      border-radius:14px;
       border:1px solid rgba(255,255,255,.25);
       background:rgba(255,255,255,.06);
+      text-decoration:none;
       color:#fff;
-      outline:none;
+      max-width: 420px;
     }
-    .btn{
-      appearance:none;
-      border:1px solid rgba(255,255,255,.35);
-      background:rgba(255,255,255,.10);
-      color:#fff;
-      border-radius:999px;
-      padding:12px 18px;
-      font-size:16px;
-      cursor:pointer;
-    }
-    .btn:hover{background:rgba(255,255,255,.14);}
-    a{color:#fff;opacity:.9}
-    a:hover{opacity:1}
-    .pill{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.25);font-size:12px;opacity:.9;}
+    .ig:hover { background: rgba(255,255,255,.10); }
+    .ig svg { width:22px; height:22px; opacity:.95; flex: 0 0 auto; }
+    .ig .txt { display:flex; flex-direction:column; gap:2px; }
+    .ig .txt .t1 { font-weight:700; letter-spacing:.01em; }
+    .ig .txt .t2 { font-size:13px; opacity:.75; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>ETERNAL</h1>
-    <div class="small">DARKFIELD</div>
+    <div class="head">
+      <h1>ETERNAL</h1>
+      <div class="small">DARKFIELD</div>
+    </div>
 
     <div class="card">
-      <div class="pill">Thank you.</div>
-      <p style="margin-top:14px;">If you want to hear about new works, join our mailing list.</p>
+      <p style="margin:0 0 14px;">
+        Thank you.
+      </p>
 
-      <!-- Mailchimp minimal POST form -->
-      <form
-        action="https://darkfield.us16.list-manage.com/subscribe/post?u=d9c850c687cb412006dc377a4&amp;id=9c037aeff3&amp;f_id=00eb35e0f0"
-        method="post"
-        target="_blank"
-        novalidate
-      >
-        <div class="row" style="margin-top:10px;">
-          <input class="input" type="email" name="EMAIL" placeholder="Email address" required>
-          <button class="btn" type="submit">Join</button>
-        </div>
+      <a class="ig" href="https://www.instagram.com/darkfield_org" target="_blank" rel="noopener">
+        <!-- simple Instagram glyph -->
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M7.5 2h9A5.5 5.5 0 0 1 22 7.5v9A5.5 5.5 0 0 1 16.5 22h-9A5.5 5.5 0 0 1 2 16.5v-9A5.5 5.5 0 0 1 7.5 2Z" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M12 16.2a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4Z" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M17.4 6.6h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        </svg>
 
-        <!-- tag -->
-        <input type="hidden" name="tags" value="4538266">
-
-        <!-- honeypot -->
-        <div aria-hidden="true" style="position:absolute;left:-5000px;">
-          <input type="text" name="b_d9c850c687cb412006dc377a4_9c037aeff3" tabindex="-1" value="">
-        </div>
-
-        <p class="small" style="margin-top:12px;">
-          By joining, you agree your info is processed by Mailchimp. You can unsubscribe at any time.
-        </p>
-      </form>
-
-      <div style="margin-top:18px;">
-        <a href="https://www.instagram.com/darkfield/" target="_blank" rel="noopener">Follow us on Instagram →</a>
-      </div>
+        <span class="txt">
+          <span class="t1">Follow us on Instagram</span>
+          <span class="t2">@darkfield_org</span>
+        </span>
+      </a>
     </div>
   </div>
 </body>
 </html>
+
