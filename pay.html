@@ -145,13 +145,12 @@
         }
       } catch (e) {
         console.error(e);
-        // IMPORTANT: show the real error so we can fix the exact cause
         showErr(String(e.message || e));
         statePill.textContent = "Error";
         return;
       }
 
-      // 3) Mount Stripe Elements (dark / ritual) + SAFARI focus/autofill fix
+      // 3) Mount Stripe Elements (dark / ritual) + SAFARI autofill/yellow fix
       const stripe = Stripe(pub);
 
       const appearance = {
@@ -169,18 +168,38 @@
           ".Input": {
             backgroundColor: "rgba(255,255,255,0.04)",
             border: "1px solid rgba(255,255,255,0.18)",
-            color: "#ffffff"
+            color: "#ffffff",
+            boxShadow: "none"
           },
           ".Input:focus": {
             backgroundColor: "rgba(255,255,255,0.10)",
             border: "1px solid rgba(255,255,255,0.35)",
-            color: "#ffffff"
+            color: "#ffffff",
+            boxShadow: "none",
+            outline: "none"
           },
           ".Input--focus": {
             backgroundColor: "rgba(255,255,255,0.10)",
             border: "1px solid rgba(255,255,255,0.35)",
-            color: "#ffffff"
+            color: "#ffffff",
+            boxShadow: "none",
+            outline: "none"
           },
+
+          /* Safari/WebKit autofill yellow override */
+          ".Input--autofilled": {
+            backgroundColor: "rgba(255,255,255,0.10)",
+            color: "#ffffff",
+            boxShadow: "0 0 0 1000px rgba(0,0,0,0.85) inset",
+            border: "1px solid rgba(255,255,255,0.35)"
+          },
+          ".Input:-webkit-autofill": {
+            backgroundColor: "rgba(255,255,255,0.10)",
+            color: "#ffffff",
+            boxShadow: "0 0 0 1000px rgba(0,0,0,0.85) inset",
+            border: "1px solid rgba(255,255,255,0.35)"
+          },
+
           ".Input--invalid": {
             border: "1px solid rgba(255,70,70,0.55)"
           },
@@ -220,10 +239,8 @@
           statePill.textContent = "Ready";
           return;
         }
-        // If no error, Stripe will usually redirect automatically.
       });
     })();
   </script>
 </body>
 </html>
-
