@@ -112,11 +112,31 @@
       let clientSecret, pi;
       try {
         statePill.textContent = "Creating…";
-        const r = await fetch("/api/create-intent", { method: "POST" });
-        const data = await r.json();
-        clientSecret = data.clientSecret;
-        pi = data.id;
-        if (!clientSecret || !pi) throw new Error("Bad intent response");
+const ctrl = new AbortController();
+const t = setTimeout(() => ctrl.abort(), 12000);
+
+const r = await fetch("/api/create-intent", {
+  method: "POST",
+  signal: ctrl.signal
+});
+
+clearTimeout(t);
+
+const text = await r.text();
+let data = {};
+try { data = JSON.parse(text); } catch {}
+
+if (!r.ok) {
+  throw new Error(`create-intent ${r.status}: ${text.slice(0, 300)}`);
+}
+
+clientSecret = data.clientSecret;
+pi = data.id;
+
+if (!clientSecret || !pi) {
+  throw new Error(`Bad intent response: ${text.slice(0, 300)}`);
+}
+
       } catch (e) {
         console.error(e);
         showErr("Could not start payment. Please refresh and try again.");
