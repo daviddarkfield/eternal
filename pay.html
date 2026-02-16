@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>ETERNAL — Payment</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; padding: 0;
+      background: #000; color: #fff;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      line-height: 1.45;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 520px;
+      padding: 28px 18px 40px;
+    }
+    h1 { font-size: 22px; letter-spacing: 0.12em; margin: 0 0 8px; }
+    .small { opacity: 0.85; font-size: 13px; }
+    .card {
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 16px;
+      padding: 18px;
+      margin-top: 18px;
+      background: rgba(255,255,255,0.03);
+    }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.35);
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-size: 16px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+    }
+    .btn:hover { background: rgba(255,255,255,0.12); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .pill {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.25);
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    .pill.bad { border-color: rgba(255,70,70,0.45); }
+
+    #payment-element { margin-top: 14px; }
+    .hr { height: 1px; background: rgba(255,255,255,0.14); margin: 16px 0; }
+
+    a { color: rgba(255,255,255,0.85); }
+    a:hover { color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>ETERNAL</h1>
+    <div class="small">DARKFIELD</div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div><strong>Unlock</strong></div>
+        <div class="pill">US $1.99</div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="small">
+        This purchase unlocks a single play on this browser.
+      </div>
+
+      <div id="payment-element"></div>
+
+      <div style="margin-top:14px;">
+        <button class="btn" id="payBtn">Pay</button>
+      </div>
+
+      <p class="small" id="msg" style="margin-top:12px;"></p>
+      <p class="small"><a href="/" id="backLink">Back</a></p>
+    </div>
+  </div>
+
+  <script src="https://js.stripe.com/v3/"></script>
+  <script>
+  (async () => {
+    const msg = document.getElementById("msg");
+    const payBtn = document.getElementById("payBtn");
+
+    function setMsg(t, isBad=false) {
+      msg.textContent = t || "";
+      msg.className = "small" + (isBad ? " pill bad" : "");
+    }
+
+    // Get publishable key from server
+    let pk;
+    try {
+      const r = await fetch("/api/config");
+      const j = await r.json();
+      pk = j && j.publishableKey;
+      if (!pk) throw new Error("Missing publishable key");
+    } catch (e) {
+      setMsg("Payment setup error. Please try again later.", true);
+      console.error(e);
+      payBtn.disabled = true;
+      return;
+    }
+
+    // Create PaymentIntent
+    let clientSecret, piId;
+    try {
+      const r = await fetch("/api/create-intent", { method: "POST" });
+      const j = await r.json();
+      clientSecret = j.clientSecret;
+      piId = j.id;
+      if (!clientSecret || !piId) throw new Error("Bad create-intent response");
+    } catch (e) {
+      setMsg("Could not create payment. Please refresh and try again.", true);
+      console.error(e);
+      payBtn.disabled = true;
+      return;
+    }
+
+    const stripe = Stripe(pk);
+
+    const appearance = {
+      theme: "night",
+      variables: {
+        colorBackground: "#000000",
+        colorText: "#ffffff",
+        colorTextSecondary: "rgba(255,255,255,0.75)",
+        colorPrimary: "rgba(255,255,255,0.92)",
+        colorDanger: "rgb(255,70,70)",
+        fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+        borderRadius: "14px",
+        spacingUnit: "4px",
+      },
+      rules: {
+        ".Input": {
+          backgroundColor: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.18)",
+        },
+        ".Input:focus": { border: "1px solid rgba(255,255,255,0.35)" },
+        ".Label": { color: "rgba(255,255,255,0.85)" },
+        ".Tab": { border: "1px solid rgba(255,255,255,0.18)" },
+        ".Tab--selected": { border: "1px solid rgba(255,255,255,0.35)" },
+      }
+    };
+
+    const elements = stripe.elements({ clientSecret, appearance });
+    const paymentElement = elements.create("payment");
+    paymentElement.mount("#payment-element");
+
+    payBtn.addEventListener("click", async () => {
+      payBtn.disabled = true;
+      setMsg("Processing…");
+
+      try {
+        const { error, paymentIntent } = await stripe.confirmPayment({
+          elements,
+          redirect: "if_required",
+          confirmParams: {
+            return_url: `${location.origin}/?pi=${encodeURIComponent(piId)}`
+          }
+        });
+
+        if (error) {
+          setMsg(error.message || "Payment failed.", true);
+          payBtn.disabled = false;
+          return;
+        }
+
+        // If no redirect required:
+        if (paymentIntent && paymentIntent.status === "succeeded") {
+          location.href = `/?pi=${encodeURIComponent(piId)}`;
+          return;
+        }
+
+        // If it’s processing or requires_action, Stripe may redirect; if not, show info:
+        setMsg("Continue to complete payment…");
+        payBtn.disabled = false;
+      } catch (e) {
+        console.error(e);
+        setMsg("Payment error. Please try again.", true);
+        payBtn.disabled = false;
+      }
+    });
+  })();
+  </script>
+</body>
+</html>
