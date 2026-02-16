@@ -150,7 +150,9 @@
         return;
       }
 
-      // 3) Mount Stripe Elements (dark / ritual) + SAFARI autofill/yellow fix
+      // 3) Mount Stripe Elements (dark / ritual) + SAFARI autofill/yellow readability fix
+      // Safari may force a yellow autofill background inside the iframe that we can't fully remove.
+      // So: keep dark styling generally, but force AUTOFILLED text to black for readability on yellow.
       const stripe = Stripe(pub);
 
       const appearance = {
@@ -186,18 +188,17 @@
             outline: "none"
           },
 
-          /* Safari/WebKit autofill yellow override */
+          /* Safari/WebKit autofill: we can't reliably remove the yellow, so make text readable */
           ".Input--autofilled": {
-            backgroundColor: "rgba(255,255,255,0.10)",
-            color: "#ffffff",
-            boxShadow: "0 0 0 1000px rgba(0,0,0,0.85) inset",
-            border: "1px solid rgba(255,255,255,0.35)"
+            /* if Safari paints yellow, black text stays readable */
+            color: "#000000",
+            border: "1px solid rgba(255,255,255,0.35)",
+            boxShadow: "none"
           },
           ".Input:-webkit-autofill": {
-            backgroundColor: "rgba(255,255,255,0.10)",
-            color: "#ffffff",
-            boxShadow: "0 0 0 1000px rgba(0,0,0,0.85) inset",
-            border: "1px solid rgba(255,255,255,0.35)"
+            color: "#000000",
+            border: "1px solid rgba(255,255,255,0.35)",
+            boxShadow: "none"
           },
 
           ".Input--invalid": {
