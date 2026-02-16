@@ -6,89 +6,80 @@
   <title>ETERNAL — Payment</title>
   <style>
     :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+
     body {
       margin: 0; padding: 0;
       background: #000; color: #fff;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       line-height: 1.45;
     }
+
     .wrap { max-width: 740px; margin: 0 auto; padding: 28px 18px 40px; }
-    h1 { font-size: 30px; letter-spacing: 0.08em; margin: 0 0 18px; }
+    .head { text-align: center; margin-bottom: 6px; }
+    h1 { font-size: 30px; letter-spacing: 0.08em; margin: 0 0 10px; }
     .small { opacity: 0.85; font-size: 13px; }
+
     .card {
       border: 1px solid rgba(255,255,255,0.18);
       border-radius: 14px;
       padding: 18px;
       margin-top: 18px;
       background: rgba(255,255,255,0.03);
+      overflow: hidden; /* prevents wallet tiles spilling outside */
     }
+
     .btn {
       appearance: none;
       border: 1px solid rgba(255,255,255,0.35);
-      background: rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.10);
       color: #fff;
       border-radius: 999px;
-      padding: 12px 18px;
-      font-size: 16px;
+      padding: 14px 24px;          /* bigger */
+      font-size: 18px;             /* bigger */
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       gap: 10px;
     }
-    .btn:hover { background: rgba(255,255,255,0.12); }
+    .btn:hover { background: rgba(255,255,255,0.14); }
     .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
     .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
     .hr { height: 1px; background: rgba(255,255,255,0.14); margin: 16px 0; }
-    .pill {
-      display: inline-block;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.25);
-      font-size: 12px;
-      opacity: 0.9;
-    }
-    .pill.bad { border-color: rgba(255,70,70,0.45); }
     a { color: rgba(255,255,255,0.85); }
-    #err { margin-top: 12px; white-space: pre-wrap; }
 
-    .field {
-      border: 1px solid rgba(255,255,255,0.18);
-      background: rgba(255,255,255,0.04);
-      border-radius: 12px;
-      padding: 14px 12px;
-      margin-top: 10px;
+    #payment-element {
+      margin-top: 14px;
+      max-width: 100%;
+      overflow: hidden;
     }
-    .field.is-focus {
-      border-color: rgba(255,255,255,0.35);
-      background: rgba(255,255,255,0.10);
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-      margin-top: 10px;
-    }
-    @media (min-width: 720px) {
-      .grid {
-        grid-template-columns: 2fr 1fr 1fr;
-      }
-    }
-    .label {
-      display: block;
-      font-size: 12px;
-      opacity: 0.8;
+
+    #err {
       margin-top: 12px;
+      display: none;
+      white-space: pre-wrap;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,70,70,0.45);
+      color: rgba(255,255,255,0.95);
+      background: rgba(255,70,70,0.10);
+      font-size: 13px;
+      opacity: 0.95;
     }
-    #wallets { margin-top: 10px; }
-    #walletBtn { width: 100%; }
-    .hint { opacity: 0.7; }
-    .microhint { font-size: 12px; opacity: 0.65; margin-top: 10px; }
+
+    /* Hide the “returned automatically” line on Safari / iOS Safari */
+    @supports (-webkit-touch-callout: none) {
+      .safari-hide { display: none !important; }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>ETERNAL</h1>
-    <div class="small">DARKFIELD</div>
+    <div class="head">
+      <h1>ETERNAL</h1>
+      <div class="small">DARKFIELD</div>
+    </div>
 
     <div class="card">
       <div class="small">Secure payment</div>
@@ -98,50 +89,18 @@
 
       <div class="small">Enter your details</div>
 
-      <!-- Wallets (Apple Pay / Google Pay) -->
-      <div id="wallets" style="display:none;">
-        <div class="small hint" style="margin-top:6px;">Fast checkout</div>
-        <div id="walletBtn" class="field" style="padding:10px;"></div>
-        <div class="hr"></div>
-      </div>
-
       <form id="form">
-        <label class="label" for="card-number">Card number</label>
-        <div class="field" id="f-number"><div id="card-number"></div></div>
+        <div id="payment-element"></div>
 
-        <div class="grid">
-          <div>
-            <label class="label" for="card-expiry">Expiry (MM/YY)</label>
-            <div class="field" id="f-expiry"><div id="card-expiry"></div></div>
-          </div>
-          <div>
-            <label class="label" for="card-cvc">Security code</label>
-            <div class="field" id="f-cvc"><div id="card-cvc"></div></div>
-          </div>
-          <div>
-            <label class="label" for="postal">Postal code</label>
-            <div class="field" style="padding:12px;">
-              <input id="postal" autocomplete="postal-code" inputmode="text"
-                style="width:100%; background:transparent; border:0; outline:0; color:#fff; font-size:16px;"
-                placeholder="WS11 1DB" />
-            </div>
-          </div>
-        </div>
-
-        <div class="microhint" id="safariHint" style="display:none;">
-          If Safari only fills your card number, enter expiry + CVC manually (or use Apple Pay).
-        </div>
-
-        <div class="row" style="margin-top:14px;">
-          <button class="btn" id="payBtn" type="submit">Pay</button>
+        <div class="row" style="margin-top:16px;">
+          <button class="btn" id="payBtn" type="submit" disabled>Pay</button>
           <a class="small" href="/">Cancel</a>
-          <span class="pill" id="statePill">Preparing…</span>
         </div>
 
-        <div class="small pill bad" id="err" style="display:none;"></div>
+        <div id="err"></div>
       </form>
 
-      <p class="small" style="margin-top:14px; opacity:0.7;">
+      <p class="small safari-hide" style="margin-top:14px; opacity:0.7;">
         You will be returned to ETERNAL automatically after payment.
       </p>
     </div>
@@ -150,210 +109,85 @@
   <script src="https://js.stripe.com/v3/"></script>
   <script>
     (async () => {
-      const statePill = document.getElementById("statePill");
       const errBox = document.getElementById("err");
       const payBtn = document.getElementById("payBtn");
       const form = document.getElementById("form");
 
-      const fNumber = document.getElementById("f-number");
-      const fExpiry = document.getElementById("f-expiry");
-      const fCvc = document.getElementById("f-cvc");
-      const safariHint = document.getElementById("safariHint");
-
       function showErr(msg) {
-        errBox.style.display = "";
+        errBox.style.display = "block";
         errBox.textContent = msg;
       }
-      function clearErr() {
-        errBox.style.display = "none";
-        errBox.textContent = "";
-      }
-
-      // Show tiny hint on Safari (this is purely UX; doesn't affect payment)
-      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-      if (isSafari) safariHint.style.display = "";
 
       // 1) Get publishable key
       let pub;
       try {
         const cfgRes = await fetch("/api/config", { cache: "no-store" });
-        const cfgText = await cfgRes.text();
-        let cfg = {};
-        try { cfg = JSON.parse(cfgText); } catch {}
-        if (!cfgRes.ok) throw new Error(`config ${cfgRes.status}: ${cfgText.slice(0, 300)}`);
+        const cfg = await cfgRes.json();
         pub = cfg.publishableKey;
-        if (!pub) throw new Error(`config missing publishableKey: ${cfgText.slice(0, 300)}`);
+        if (!pub) throw new Error("Missing publishableKey");
       } catch (e) {
-        console.error(e);
-        showErr(String(e.message || e));
-        statePill.textContent = "Error";
+        showErr("Missing Stripe configuration. Please try again later.");
         return;
       }
 
       // 2) Create PaymentIntent on your server
       let clientSecret, pi;
       try {
-        statePill.textContent = "Creating…";
-
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 12000);
-
-        const r = await fetch("/api/create-intent", {
-          method: "POST",
-          signal: ctrl.signal,
-          cache: "no-store"
-        });
-
-        clearTimeout(t);
-
-        const text = await r.text();
-        let data = {};
-        try { data = JSON.parse(text); } catch {}
-
-        if (!r.ok) throw new Error(`create-intent ${r.status}: ${text.slice(0, 300)}`);
-
+        const r = await fetch("/api/create-intent", { method: "POST", cache: "no-store" });
+        const data = await r.json();
         clientSecret = data.clientSecret;
         pi = data.id;
-
-        if (!clientSecret || !pi) throw new Error(`Bad intent response: ${text.slice(0, 300)}`);
+        if (!clientSecret || !pi) throw new Error("Bad intent response");
       } catch (e) {
         console.error(e);
-        showErr(String(e.message || e));
-        statePill.textContent = "Error";
+        showErr("Could not start payment. Please refresh and try again.");
         return;
       }
 
-      // 3) Stripe + Elements
+      // 3) Mount Stripe Elements (dark / ritual)
       const stripe = Stripe(pub);
-      const elements = stripe.elements({ clientSecret });
-
-      const baseStyle = {
-        base: {
-          color: "#ffffff",
-          fontSize: "16px",
-          fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
-          "::placeholder": { color: "rgba(255,255,255,0.45)" }
+      const appearance = {
+        theme: "night",
+        variables: {
+          colorBackground: "#000000",
+          colorText: "#ffffff",
+          colorDanger: "#ff4646",
+          colorPrimary: "#cfcfcf",
+          borderRadius: "14px",
+          spacingUnit: "6px"
         },
-        invalid: {
-          color: "#ffb3b3"
+        rules: {
+          ".Input": {
+            backgroundColor: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.18)"
+          },
+          ".Label": { color: "rgba(255,255,255,0.8)" }
         }
       };
 
-      const cardNumber = elements.create("cardNumber", { style: baseStyle });
-      const cardExpiry = elements.create("cardExpiry", { style: baseStyle });
-      const cardCvc = elements.create("cardCvc", { style: baseStyle });
+      const elements = stripe.elements({ clientSecret, appearance });
+      const paymentElement = elements.create("payment");
+      paymentElement.mount("#payment-element");
 
-      cardNumber.mount("#card-number");
-      cardExpiry.mount("#card-expiry");
-      cardCvc.mount("#card-cvc");
+      payBtn.disabled = false;
 
-      function hookFocus(el, wrapper) {
-        el.on("focus", () => wrapper.classList.add("is-focus"));
-        el.on("blur",  () => wrapper.classList.remove("is-focus"));
-      }
-      hookFocus(cardNumber, fNumber);
-      hookFocus(cardExpiry, fExpiry);
-      hookFocus(cardCvc, fCvc);
-
-      // Auto-advance to reduce friction when only card number autofills
-      cardNumber.on("change", (ev) => {
-        if (ev && ev.complete) {
-          // slight delay so Safari can finish its fill animation
-          setTimeout(() => cardExpiry.focus(), 60);
-        }
-      });
-      cardExpiry.on("change", (ev) => {
-        if (ev && ev.complete) {
-          setTimeout(() => cardCvc.focus(), 60);
-        }
-      });
-
-      // Wallets (Apple Pay / Google Pay) via Payment Request Button
-      const wallets = document.getElementById("wallets");
-      try {
-        const paymentRequest = stripe.paymentRequest({
-          country: "GB",
-          currency: "usd",
-          total: { label: "ETERNAL", amount: 199 },
-          requestPayerName: true,
-          requestPayerEmail: true
-        });
-
-        const result = await paymentRequest.canMakePayment();
-        if (result) {
-          wallets.style.display = "";
-          const prButton = elements.create("paymentRequestButton", {
-            paymentRequest,
-            style: { paymentRequestButton: { theme: "dark", height: "44px" } }
-          });
-          prButton.mount("#walletBtn");
-
-          paymentRequest.on("paymentmethod", async (ev) => {
-            clearErr();
-            payBtn.disabled = true;
-            statePill.textContent = "Processing…";
-
-            const { error, paymentIntent } = await stripe.confirmCardPayment(
-              clientSecret,
-              { payment_method: ev.paymentMethod.id },
-              { handleActions: true }
-            );
-
-            if (error) {
-              ev.complete("fail");
-              showErr(error.message || "Payment failed. Please try again.");
-              payBtn.disabled = false;
-              statePill.textContent = "Ready";
-              return;
-            }
-
-            ev.complete("success");
-
-            if (paymentIntent && paymentIntent.status === "succeeded") {
-              location.href = `/?pi=${encodeURIComponent(pi)}`;
-              return;
-            }
-            location.href = `/?pi=${encodeURIComponent(pi)}`;
-          });
-        }
-      } catch (e) {
-        console.warn("wallet setup skipped:", e);
-      }
-
-      statePill.textContent = "Ready";
-
-      // 4) Confirm card payment
+      // 4) Confirm payment
       form.addEventListener("submit", async (ev) => {
         ev.preventDefault();
-        clearErr();
-
+        errBox.style.display = "none";
         payBtn.disabled = true;
-        statePill.textContent = "Processing…";
 
-        const postal = (document.getElementById("postal").value || "").trim();
         const return_url = `${location.origin}/?pi=${encodeURIComponent(pi)}`;
 
-        const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-          payment_method: {
-            card: cardNumber,
-            billing_details: {
-              address: postal ? { postal_code: postal } : undefined
-            }
-          },
-          return_url
+        const { error } = await stripe.confirmPayment({
+          elements,
+          confirmParams: { return_url }
         });
 
         if (error) {
           console.error(error);
           showErr(error.message || "Payment failed. Please try again.");
           payBtn.disabled = false;
-          statePill.textContent = "Ready";
-          return;
-        }
-
-        if (paymentIntent && paymentIntent.status === "succeeded") {
-          location.href = `/?pi=${encodeURIComponent(pi)}`;
-          return;
         }
       });
     })();
