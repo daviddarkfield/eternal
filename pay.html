@@ -151,13 +151,15 @@
         return;
       }
 
-      // 3) Mount Stripe Elements (dark / ritual)
+      // 3) Mount Stripe Elements (dark / ritual) + SAFARI focus/autofill fix
       const stripe = Stripe(pub);
+
       const appearance = {
         theme: "night",
         variables: {
           colorBackground: "#000000",
           colorText: "#ffffff",
+          colorTextSecondary: "rgba(255,255,255,0.75)",
           colorDanger: "#ff4646",
           colorPrimary: "#cfcfcf",
           borderRadius: "14px",
@@ -166,9 +168,28 @@
         rules: {
           ".Input": {
             backgroundColor: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.18)"
+            border: "1px solid rgba(255,255,255,0.18)",
+            color: "#ffffff"
           },
-          ".Label": { color: "rgba(255,255,255,0.8)" }
+          ".Input:focus": {
+            backgroundColor: "rgba(255,255,255,0.10)",
+            border: "1px solid rgba(255,255,255,0.35)",
+            color: "#ffffff"
+          },
+          ".Input--focus": {
+            backgroundColor: "rgba(255,255,255,0.10)",
+            border: "1px solid rgba(255,255,255,0.35)",
+            color: "#ffffff"
+          },
+          ".Input--invalid": {
+            border: "1px solid rgba(255,70,70,0.55)"
+          },
+          ".Label": {
+            color: "rgba(255,255,255,0.80)"
+          },
+          ".Error": {
+            color: "#ff4646"
+          }
         }
       };
 
@@ -205,3 +226,4 @@
   </script>
 </body>
 </html>
+
