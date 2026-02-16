@@ -50,7 +50,7 @@
     .pill.bad { border-color: rgba(255,70,70,0.45); }
     a { color: rgba(255,255,255,0.85); }
     #payment-element { margin-top: 14px; }
-    #err { margin-top: 12px; }
+    #err { margin-top: 12px; white-space: pre-wrap; }
   </style>
 </head>
 <body>
@@ -99,11 +99,16 @@
       // 1) Get publishable key
       let pub;
       try {
-        const cfgRes = await fetch("/api/config");
-        const cfg = await cfgRes.json();
+        const cfgRes = await fetch("/api/config", { cache: "no-store" });
+        const cfgText = await cfgRes.text();
+        let cfg = {};
+        try { cfg = JSON.parse(cfgText); } catch {}
+        if (!cfgRes.ok) throw new Error(`config ${cfgRes.status}: ${cfgText.slice(0, 300)}`);
         pub = cfg.publishableKey;
+        if (!pub) throw new Error(`config missing publishableKey: ${cfgText.slice(0, 300)}`);
       } catch (e) {
-        showErr("Missing Stripe configuration. Please try again later.");
+        console.error(e);
+        showErr(String(e.message || e));
         statePill.textContent = "Error";
         return;
       }
@@ -112,34 +117,36 @@
       let clientSecret, pi;
       try {
         statePill.textContent = "Creating…";
-const ctrl = new AbortController();
-const t = setTimeout(() => ctrl.abort(), 12000);
 
-const r = await fetch("/api/create-intent", {
-  method: "POST",
-  signal: ctrl.signal
-});
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 12000);
 
-clearTimeout(t);
+        const r = await fetch("/api/create-intent", {
+          method: "POST",
+          signal: ctrl.signal,
+          cache: "no-store"
+        });
 
-const text = await r.text();
-let data = {};
-try { data = JSON.parse(text); } catch {}
+        clearTimeout(t);
 
-if (!r.ok) {
-  throw new Error(`create-intent ${r.status}: ${text.slice(0, 300)}`);
-}
+        const text = await r.text();
+        let data = {};
+        try { data = JSON.parse(text); } catch {}
 
-clientSecret = data.clientSecret;
-pi = data.id;
+        if (!r.ok) {
+          throw new Error(`create-intent ${r.status}: ${text.slice(0, 300)}`);
+        }
 
-if (!clientSecret || !pi) {
-  throw new Error(`Bad intent response: ${text.slice(0, 300)}`);
-}
+        clientSecret = data.clientSecret;
+        pi = data.id;
 
+        if (!clientSecret || !pi) {
+          throw new Error(`Bad intent response: ${text.slice(0, 300)}`);
+        }
       } catch (e) {
         console.error(e);
-        showErr("Could not start payment. Please refresh and try again.");
+        // IMPORTANT: show the real error so we can fix the exact cause
+        showErr(String(e.message || e));
         statePill.textContent = "Error";
         return;
       }
@@ -171,7 +178,7 @@ if (!clientSecret || !pi) {
 
       statePill.textContent = "Ready";
 
-      // 4) Confirm payment (stays on your page; Stripe handles SCA if needed)
+      // 4) Confirm payment (Stripe handles SCA if needed)
       form.addEventListener("submit", async (ev) => {
         ev.preventDefault();
         errBox.style.display = "none";
@@ -192,11 +199,9 @@ if (!clientSecret || !pi) {
           statePill.textContent = "Ready";
           return;
         }
-
-        // If no error, Stripe will usually redirect automatically (SCA / return_url)
+        // If no error, Stripe will usually redirect automatically.
       });
     })();
   </script>
 </body>
 </html>
-
