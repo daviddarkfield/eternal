@@ -80,10 +80,22 @@
     <div class="small">DARKFIELD</div>
 
     <div class="card" id="publicCard">
+      <p><strong>A SHOW FOR ONE PERSON ALONE IN THEIR BED.</strong><br/>
+      It explores the temptation of eternal life and what price you would pay to achieve it.</p>
 
       <p class="small">“I want you to believe... to believe in things that you cannot.” — Bram Stoker</p>
 
       <div class="hr"></div>
+
+      <p>
+        You have been chosen and we thank you for your sacrifice.
+        In return we offer you the opportunity for eternal life — but there are conditions.
+      </p>
+
+      <p class="small">
+        ETERNAL is a 24 minute immersive audio experience for one person, alone in their bed.
+        Commissioned by the 2020 Bram Stoker Festival, Dublin.
+      </p>
 
       <div class="row" style="margin-top:14px;">
         <button class="btn" id="buyBtn">Listen now ($1.99)</button>
@@ -106,7 +118,7 @@
         <li>Listen with headphones.</li>
         <li>Get into bed. Alone.</li>
         <li>Lock the door. Silence your phone.</li>
-    
+        <li>This is scary.</li>
       </ul>
 
       <p class="small">
@@ -119,7 +131,6 @@
         <button class="btn" id="playBtn">Play</button>
         <span class="pill mono" id="sessionTag" style="display:none;"></span>
         <button class="btn" id="resetBtn" style="display:none;">Reset (testing)</button>
-        <button class="btn" id="previewThanksBtn" style="display:none;">Preview thanks</button>
       </div>
 
       <div style="margin-top:14px; display:none;" id="playingBox">
@@ -129,7 +140,7 @@
 
       <div style="margin-top:14px; display:none;" id="doneBox">
         <div class="pill ok">Completed</div>
-        <div class="small" style="margin-top:8px;">Redirecting…</div>
+        <div class="small" style="margin-top:8px;">Thank you. This experience cannot be replayed on this browser.</div>
       </div>
 
       <audio id="player" preload="none" playsinline></audio>
@@ -152,24 +163,17 @@
 
 <script>
 (() => {
-  // ---- local rules (simple & generous) ----
-  // One completion per browser. If they close early, they can come back and try again.
+  // one completion per browser
   const LS_COMPLETED_AT = "eternal_completed_at_v1";
 
-  // Price label (UI only). Make sure your Stripe create-checkout uses unit_amount=199.
-  const PRICE_LABEL = "$1.99";
-
   const qs = new URLSearchParams(location.search);
-  const sessionId = qs.get("session_id");
-  const previewThanks = qs.get("preview") === "thanks";
+  const pi = qs.get("pi"); // PaymentIntent id
 
   const publicCard = document.getElementById("publicCard");
   const paidCard = document.getElementById("paidCard");
   const buyBtn = document.getElementById("buyBtn");
   const playBtn = document.getElementById("playBtn");
   const resetBtn = document.getElementById("resetBtn");
-  const previewThanksBtn = document.getElementById("previewThanksBtn");
-
   const statePill = document.getElementById("statePill");
   const paidPill = document.getElementById("paidPill");
   const sessionTag = document.getElementById("sessionTag");
@@ -185,35 +189,20 @@
   const audio = document.getElementById("player");
   let wakeLock = null;
 
-  // Set price text on the button
-  buyBtn.textContent = `Listen now (${PRICE_LABEL})`;
-
-  // Quick preview without listening:
-  // /?preview=thanks will jump to thanks page (handy for testing)
-  if (previewThanks) {
-    location.replace("/thanks.html");
-    return;
-  }
-
   function isCompleted() {
     return Number(localStorage.getItem(LS_COMPLETED_AT) || "0") > 0;
   }
-
   function markCompletedLocal() {
     localStorage.setItem(LS_COMPLETED_AT, String(Date.now()));
   }
 
-  // show reset + preview buttons only on pages.dev (optional)
+  // testing only
   if (location.hostname.includes("pages.dev")) {
     resetBtn.style.display = "";
-    previewThanksBtn.style.display = "";
     resetBtn.addEventListener("click", () => {
       if (!confirm("Reset completed state on this browser?")) return;
       localStorage.removeItem(LS_COMPLETED_AT);
       location.reload();
-    });
-    previewThanksBtn.addEventListener("click", () => {
-      window.open("/thanks.html", "_blank");
     });
   }
 
@@ -223,22 +212,22 @@
     cancelBtn.onclick = () => { modalBack.style.display = "none"; };
   }
 
-  async function api(path, opts) {
-    const res = await fetch(path, opts);
+  async function apiJson(url) {
+    const res = await fetch(url, { method: "GET" });
     const text = await res.text().catch(()=> "");
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
-    if (!res.ok) throw new Error(`API ${path} failed: ${res.status} ${text}`);
+    if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
     return data;
   }
 
   async function refreshStatus() {
-    if (!sessionId) return { ok: true, state: "locked" };
-    return api(`/api/status?session_id=${encodeURIComponent(sessionId)}`, { method: "GET" });
+    if (!pi) return { ok: true, state: "locked" };
+    return apiJson(`/api/status?pi=${encodeURIComponent(pi)}`);
   }
 
   function setUIFromState(apiState) {
-    if (!sessionId) {
+    if (!pi) {
       statePill.textContent = "Locked";
       statePill.className = "pill";
       publicCard.style.display = "";
@@ -248,14 +237,16 @@
     }
 
     sessionTag.style.display = "";
-    sessionTag.textContent = `session: ${sessionId.slice(0, 10)}…`;
+    sessionTag.textContent = `pi: ${pi.slice(0, 14)}…`;
 
     if (isCompleted()) {
       statePill.textContent = "Completed";
       statePill.className = "pill ok";
-      publicCard.style.display = "";
-      paidCard.style.display = "none";
-      publicHint.textContent = "This browser has completed the experience. Please purchase again to listen again.";
+      publicCard.style.display = "none";
+      paidCard.style.display = "";
+      paidPill.textContent = "Completed";
+      playBtn.disabled = true;
+      doneBox.style.display = "";
       return;
     }
 
@@ -269,43 +260,24 @@
       paidPill.textContent = "Ready";
       playBtn.disabled = false;
       doneBox.style.display = "none";
-      playingBox.style.display = "none";
       return;
     }
 
-    if (state === "locked") {
-      statePill.textContent = "Locked";
-      statePill.className = "pill bad";
-      publicCard.style.display = "";
-      paidCard.style.display = "none";
-      publicHint.textContent = "Payment not verified yet. If you just paid, wait a moment and refresh.";
-      return;
-    }
-
-    statePill.textContent = "Processing…";
-    statePill.className = "pill";
+    statePill.textContent = "Locked";
+    statePill.className = "pill bad";
     publicCard.style.display = "";
     paidCard.style.display = "none";
-    publicHint.textContent = "Processing…";
+    publicHint.textContent = "Payment not verified yet. If you just paid, wait a moment and refresh.";
   }
 
-  buyBtn.addEventListener("click", async () => {
-    buyBtn.disabled = true;
-    try {
-      const out = await api("/api/create-checkout", { method: "POST" });
-      location.href = out.url;
-    } catch (e) {
-      alert("Payment setup failed. Please try again.");
-      buyBtn.disabled = false;
-      console.error(e);
-    }
+  buyBtn.addEventListener("click", () => {
+    // Go to full-black ritual payment page
+    location.href = "/pay.html";
   });
 
   async function acquireWakeLock() {
     try {
-      if ("wakeLock" in navigator) {
-        wakeLock = await navigator.wakeLock.request("screen");
-      }
+      if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen");
     } catch (_) {}
   }
 
@@ -313,7 +285,6 @@
     audio.addEventListener("pause", () => {
       if (!audio.ended) audio.play().catch(()=>{});
     });
-
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden && !audio.ended) audio.play().catch(()=>{});
     });
@@ -331,8 +302,8 @@
   async function beginPlayback() {
     if (isCompleted()) return;
 
-    if (!sessionId) {
-      alert("Missing session_id. Please return to the link you received after payment.");
+    if (!pi) {
+      alert("Missing payment token. Please return to the link you received after payment.");
       playBtn.disabled = false;
       return;
     }
@@ -343,8 +314,7 @@
     playingBox.style.display = "";
     doneBox.style.display = "none";
 
-    // STREAM DIRECTLY (no fetch-to-blob).
-    audio.src = `/api/audio?session_id=${encodeURIComponent(sessionId)}`;
+    audio.src = `/api/audio?pi=${encodeURIComponent(pi)}`;
     audio.controls = false;
     audio.loop = false;
 
@@ -356,8 +326,9 @@
       try { if (wakeLock) await wakeLock.release(); } catch(_) {}
 
       markCompletedLocal();
+      setUIFromState({ state: "unlocked" });
 
-      // Redirect to thanks page
+      // Go to post-show page
       location.href = "/thanks.html";
     }, { once: true });
 
@@ -376,7 +347,7 @@
 
   // Boot
   (async () => {
-    if (!sessionId) {
+    if (!pi) {
       setUIFromState({ state: "locked" });
       return;
     }
@@ -394,4 +365,3 @@
 </script>
 </body>
 </html>
-
