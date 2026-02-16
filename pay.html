@@ -49,8 +49,42 @@
     }
     .pill.bad { border-color: rgba(255,70,70,0.45); }
     a { color: rgba(255,255,255,0.85); }
-    #payment-element { margin-top: 14px; }
     #err { margin-top: 12px; white-space: pre-wrap; }
+
+    /* “input shell” that matches your UI */
+    .field {
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.04);
+      border-radius: 12px;
+      padding: 14px 12px;
+      margin-top: 10px;
+    }
+    .field.is-focus {
+      border-color: rgba(255,255,255,0.35);
+      background: rgba(255,255,255,0.10);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    @media (min-width: 720px) {
+      .grid {
+        grid-template-columns: 2fr 1fr 1fr;
+      }
+    }
+    .label {
+      display: block;
+      font-size: 12px;
+      opacity: 0.8;
+      margin-top: 12px;
+    }
+
+    /* Wallet buttons container */
+    #wallets { margin-top: 10px; }
+    #walletBtn { width: 100%; }
+    .hint { opacity: 0.7; }
   </style>
 </head>
 <body>
@@ -65,8 +99,36 @@
       <div class="hr"></div>
 
       <div class="small">Enter your details</div>
+
+      <!-- Wallets (Apple Pay / Google Pay) -->
+      <div id="wallets" style="display:none;">
+        <div class="small hint" style="margin-top:6px;">Fast checkout</div>
+        <div id="walletBtn" class="field" style="padding:10px;"></div>
+        <div class="hr"></div>
+      </div>
+
       <form id="form">
-        <div id="payment-element"></div>
+        <label class="label" for="card-number">Card number</label>
+        <div class="field" id="f-number"><div id="card-number"></div></div>
+
+        <div class="grid">
+          <div>
+            <label class="label" for="card-expiry">Expiry (MM/YY)</label>
+            <div class="field" id="f-expiry"><div id="card-expiry"></div></div>
+          </div>
+          <div>
+            <label class="label" for="card-cvc">Security code</label>
+            <div class="field" id="f-cvc"><div id="card-cvc"></div></div>
+          </div>
+          <div>
+            <label class="label" for="postal">Postal code</label>
+            <div class="field" style="padding:12px;">
+              <input id="postal" autocomplete="postal-code" inputmode="text"
+                style="width:100%; background:transparent; border:0; outline:0; color:#fff; font-size:16px;"
+                placeholder="WS11 1DB" />
+            </div>
+          </div>
+        </div>
 
         <div class="row" style="margin-top:14px;">
           <button class="btn" id="payBtn" type="submit">Pay</button>
@@ -91,9 +153,17 @@
       const payBtn = document.getElementById("payBtn");
       const form = document.getElementById("form");
 
+      const fNumber = document.getElementById("f-number");
+      const fExpiry = document.getElementById("f-expiry");
+      const fCvc = document.getElementById("f-cvc");
+
       function showErr(msg) {
         errBox.style.display = "";
         errBox.textContent = msg;
+      }
+      function clearErr() {
+        errBox.style.display = "none";
+        errBox.textContent = "";
       }
 
       // 1) Get publishable key
@@ -133,16 +203,12 @@
         let data = {};
         try { data = JSON.parse(text); } catch {}
 
-        if (!r.ok) {
-          throw new Error(`create-intent ${r.status}: ${text.slice(0, 300)}`);
-        }
+        if (!r.ok) throw new Error(`create-intent ${r.status}: ${text.slice(0, 300)}`);
 
         clientSecret = data.clientSecret;
         pi = data.id;
 
-        if (!clientSecret || !pi) {
-          throw new Error(`Bad intent response: ${text.slice(0, 300)}`);
-        }
+        if (!clientSecret || !pi) throw new Error(`Bad intent response: ${text.slice(0, 300)}`);
       } catch (e) {
         console.error(e);
         showErr(String(e.message || e));
@@ -150,87 +216,125 @@
         return;
       }
 
-      // 3) Mount Stripe Elements (dark / ritual) + SAFARI autofill/yellow readability fix
-      // Safari may force a yellow autofill background inside the iframe that we can't fully remove.
-      // So: keep dark styling generally, but force AUTOFILLED text to black for readability on yellow.
+      // 3) Stripe + Elements (separate card elements = more reliable styling in Safari)
       const stripe = Stripe(pub);
 
-      const appearance = {
-        theme: "night",
-        variables: {
-          colorBackground: "#000000",
-          colorText: "#ffffff",
-          colorTextSecondary: "rgba(255,255,255,0.75)",
-          colorDanger: "#ff4646",
-          colorPrimary: "#cfcfcf",
-          borderRadius: "14px",
-          spacingUnit: "6px"
+      const elements = stripe.elements({
+        clientSecret,
+        fonts: [],
+      });
+
+      const baseStyle = {
+        base: {
+          color: "#ffffff",
+          fontSize: "16px",
+          fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+          "::placeholder": { color: "rgba(255,255,255,0.45)" }
         },
-        rules: {
-          ".Input": {
-            backgroundColor: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.18)",
-            color: "#ffffff",
-            boxShadow: "none"
-          },
-          ".Input:focus": {
-            backgroundColor: "rgba(255,255,255,0.10)",
-            border: "1px solid rgba(255,255,255,0.35)",
-            color: "#ffffff",
-            boxShadow: "none",
-            outline: "none"
-          },
-          ".Input--focus": {
-            backgroundColor: "rgba(255,255,255,0.10)",
-            border: "1px solid rgba(255,255,255,0.35)",
-            color: "#ffffff",
-            boxShadow: "none",
-            outline: "none"
-          },
-
-          /* Safari/WebKit autofill: we can't reliably remove the yellow, so make text readable */
-          ".Input--autofilled": {
-            /* if Safari paints yellow, black text stays readable */
-            color: "#000000",
-            border: "1px solid rgba(255,255,255,0.35)",
-            boxShadow: "none"
-          },
-          ".Input:-webkit-autofill": {
-            color: "#000000",
-            border: "1px solid rgba(255,255,255,0.35)",
-            boxShadow: "none"
-          },
-
-          ".Input--invalid": {
-            border: "1px solid rgba(255,70,70,0.55)"
-          },
-          ".Label": {
-            color: "rgba(255,255,255,0.80)"
-          },
-          ".Error": {
-            color: "#ff4646"
-          }
+        invalid: {
+          color: "#ffb3b3"
         }
       };
 
-      const elements = stripe.elements({ clientSecret, appearance });
-      const paymentElement = elements.create("payment");
-      paymentElement.mount("#payment-element");
+      const cardNumber = elements.create("cardNumber", { style: baseStyle });
+      const cardExpiry = elements.create("cardExpiry", { style: baseStyle });
+      const cardCvc = elements.create("cardCvc", { style: baseStyle });
+
+      cardNumber.mount("#card-number");
+      cardExpiry.mount("#card-expiry");
+      cardCvc.mount("#card-cvc");
+
+      function hookFocus(el, wrapper) {
+        el.on("focus", () => wrapper.classList.add("is-focus"));
+        el.on("blur",  () => wrapper.classList.remove("is-focus"));
+      }
+      hookFocus(cardNumber, fNumber);
+      hookFocus(cardExpiry, fExpiry);
+      hookFocus(cardCvc, fCvc);
+
+      // 3b) Apple Pay / Google Pay via Payment Request Button (shows only when available)
+      // Note: requires your Stripe account + domain verification (which you’ve done).
+      const wallets = document.getElementById("wallets");
+      try {
+        const paymentRequest = stripe.paymentRequest({
+          country: "GB",
+          currency: "usd",
+          total: { label: "ETERNAL", amount: 199 },
+          requestPayerName: true,
+          requestPayerEmail: true
+        });
+
+        const result = await paymentRequest.canMakePayment();
+        if (result) {
+          wallets.style.display = "";
+          const prButton = elements.create("paymentRequestButton", {
+            paymentRequest,
+            style: {
+              paymentRequestButton: {
+                theme: "dark",
+                height: "44px"
+              }
+            }
+          });
+          prButton.mount("#walletBtn");
+
+          paymentRequest.on("paymentmethod", async (ev) => {
+            clearErr();
+            payBtn.disabled = true;
+            statePill.textContent = "Processing…";
+
+            // Confirm PI using the payment method from Apple Pay / Google Pay
+            const { error, paymentIntent } = await stripe.confirmCardPayment(
+              clientSecret,
+              { payment_method: ev.paymentMethod.id },
+              { handleActions: true }
+            );
+
+            if (error) {
+              ev.complete("fail");
+              showErr(error.message || "Payment failed. Please try again.");
+              payBtn.disabled = false;
+              statePill.textContent = "Ready";
+              return;
+            }
+
+            ev.complete("success");
+
+            if (paymentIntent && paymentIntent.status === "succeeded") {
+              location.href = `/?pi=${encodeURIComponent(pi)}`;
+              return;
+            }
+
+            // If further action is required, Stripe may have handled it; fall back:
+            location.href = `/?pi=${encodeURIComponent(pi)}`;
+          });
+        }
+      } catch (e) {
+        // Wallets are optional; ignore failures here
+        console.warn("wallet setup skipped:", e);
+      }
 
       statePill.textContent = "Ready";
 
-      // 4) Confirm payment (Stripe handles SCA if needed)
+      // 4) Confirm card payment
       form.addEventListener("submit", async (ev) => {
         ev.preventDefault();
-        errBox.style.display = "none";
+        clearErr();
+
         payBtn.disabled = true;
         statePill.textContent = "Processing…";
 
+        const postal = (document.getElementById("postal").value || "").trim();
         const return_url = `${location.origin}/?pi=${encodeURIComponent(pi)}`;
 
-        const { error } = await stripe.confirmPayment({
-          elements,
-          confirmParams: { return_url }
+        const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: {
+            card: cardNumber,
+            billing_details: {
+              address: postal ? { postal_code: postal } : undefined
+            }
+          },
+          return_url
         });
 
         if (error) {
@@ -240,8 +344,16 @@
           statePill.textContent = "Ready";
           return;
         }
+
+        // If no error, either succeeded immediately or will redirect for SCA.
+        if (paymentIntent && paymentIntent.status === "succeeded") {
+          location.href = `/?pi=${encodeURIComponent(pi)}`;
+          return;
+        }
+        // Otherwise Stripe may redirect automatically.
       });
     })();
   </script>
 </body>
 </html>
+
