@@ -51,21 +51,7 @@
     .pill.ok { border-color: rgba(0,255,140,0.35); }
     .pill.bad { border-color: rgba(255,70,70,0.45); }
 
-    .progress {
-      width: 100%;
-      height: 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.22);
-      overflow: hidden;
-      background: rgba(255,255,255,0.05);
-    }
-    .progress > div {
-      height: 100%;
-      width: 0%;
-      background: rgba(255,255,255,0.85);
-      transition: width 0.15s linear;
-    }
-
+    /* Modal */
     .modalBack {
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.72);
@@ -143,7 +129,8 @@
 
       <div class="row" style="margin-top:14px;">
         <button class="btn" id="playBtn">Play</button>
-        <span class="pill mono" id="sessionTag" style="display:none;"></span>
+        <span class="pill mono" id="piTag" style="display:none;"></span>
+        <button class="btn" id="resetBtn" style="display:none;">Reset (testing)</button>
       </div>
 
       <div style="margin-top:14px; display:none;" id="playingBox">
@@ -176,24 +163,20 @@
 
 <script>
 (() => {
-  // One completion per browser
   const LS_COMPLETED_AT = "eternal_completed_at_v1";
 
   const qs = new URLSearchParams(location.search);
-
-  // We support either:
-  //   /?session_id=...
-  // or (Elements flow):
-  //   /?pi=pi_...
-  const sessionId = qs.get("session_id") || qs.get("pi");
+  // Accept either ?pi=pi_... (our flow) OR Stripe return params (?payment_intent=pi_...)
+  const pi = qs.get("pi") || qs.get("payment_intent");
 
   const publicCard = document.getElementById("publicCard");
   const paidCard = document.getElementById("paidCard");
   const buyBtn = document.getElementById("buyBtn");
   const playBtn = document.getElementById("playBtn");
+  const resetBtn = document.getElementById("resetBtn");
   const statePill = document.getElementById("statePill");
   const paidPill = document.getElementById("paidPill");
-  const sessionTag = document.getElementById("sessionTag");
+  const piTag = document.getElementById("piTag");
   const publicHint = document.getElementById("publicHint");
 
   const modalBack = document.getElementById("modalBack");
@@ -203,7 +186,6 @@
   const playingBox = document.getElementById("playingBox");
   const doneBox = document.getElementById("doneBox");
   const audio = document.getElementById("player");
-
   let wakeLock = null;
 
   function isCompleted() {
@@ -211,6 +193,15 @@
   }
   function markCompletedLocal() {
     localStorage.setItem(LS_COMPLETED_AT, String(Date.now()));
+  }
+
+  if (location.hostname.includes("pages.dev")) {
+    resetBtn.style.display = "";
+    resetBtn.addEventListener("click", () => {
+      if (!confirm("Reset completed state on this browser?")) return;
+      localStorage.removeItem(LS_COMPLETED_AT);
+      location.reload();
+    });
   }
 
   function showModal(onConfirm) {
@@ -229,12 +220,12 @@
   }
 
   async function refreshStatus() {
-    if (!sessionId) return { ok: true, state: "locked" };
-    return apiJson(`/api/status?session_id=${encodeURIComponent(sessionId)}`, { method: "GET" });
+    if (!pi) return { ok: true, state: "locked" };
+    return apiJson(`/api/status?pi=${encodeURIComponent(pi)}`, { method: "GET" });
   }
 
-  function setUI(apiState) {
-    if (!sessionId) {
+  function setUI(state) {
+    if (!pi) {
       statePill.textContent = "Locked";
       statePill.className = "pill";
       publicCard.style.display = "";
@@ -243,8 +234,8 @@
       return;
     }
 
-    sessionTag.style.display = "";
-    sessionTag.textContent = `session: ${sessionId.slice(0, 10)}…`;
+    piTag.style.display = "";
+    piTag.textContent = `pi: ${pi.slice(0, 12)}…`;
 
     if (isCompleted()) {
       statePill.textContent = "Completed";
@@ -257,8 +248,6 @@
       return;
     }
 
-    const state = String(apiState?.state || "").toLowerCase();
-
     if (state === "unlocked") {
       statePill.textContent = "Unlocked";
       statePill.className = "pill ok";
@@ -270,32 +259,32 @@
       return;
     }
 
-    if (state === "consumed") {
-      statePill.textContent = "Completed";
-      statePill.className = "pill ok";
-      publicCard.style.display = "none";
-      paidCard.style.display = "";
-      paidPill.textContent = "Completed";
-      playBtn.disabled = true;
-      doneBox.style.display = "";
+    if (state === "locked") {
+      statePill.textContent = "Locked";
+      statePill.className = "pill bad";
+      publicCard.style.display = "";
+      paidCard.style.display = "none";
+      publicHint.textContent = "Payment not verified yet. If you just paid, wait a moment and refresh.";
       return;
     }
 
-    statePill.textContent = "Locked";
-    statePill.className = "pill bad";
+    statePill.textContent = "Processing…";
+    statePill.className = "pill";
     publicCard.style.display = "";
     paidCard.style.display = "none";
-    publicHint.textContent = "Payment not verified yet. If you just paid, wait a moment and refresh.";
+    publicHint.textContent = "Processing…";
   }
 
-  // IMPORTANT: Elements flow — go to our own payment page
   buyBtn.addEventListener("click", () => {
+    // Go to YOUR dark payment page (Stripe Elements)
     location.href = "/pay.html";
   });
 
   async function acquireWakeLock() {
     try {
-      if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen");
+      if ("wakeLock" in navigator) {
+        wakeLock = await navigator.wakeLock.request("screen");
+      }
     } catch (_) {}
   }
 
@@ -306,23 +295,14 @@
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden && !audio.ended) audio.play().catch(()=>{});
     });
-
-    // block scrubbing best-effort
     let lastTime = 0;
-    audio.addEventListener("timeupdate", () => {
-      if (!audio.seeking) lastTime = audio.currentTime;
-    });
-    audio.addEventListener("seeking", () => {
-      audio.currentTime = lastTime || 0;
-    });
+    audio.addEventListener("timeupdate", () => { if (!audio.seeking) lastTime = audio.currentTime; });
+    audio.addEventListener("seeking", () => { audio.currentTime = lastTime || 0; });
   }
 
   async function beginPlayback() {
     if (isCompleted()) return;
-    if (!sessionId) {
-      alert("Missing session. Please return to the link after payment.");
-      return;
-    }
+    if (!pi) { alert("Missing payment reference. Please pay again."); return; }
 
     playBtn.disabled = true;
     await acquireWakeLock();
@@ -330,7 +310,7 @@
     playingBox.style.display = "";
     doneBox.style.display = "none";
 
-    audio.src = `/api/audio?session_id=${encodeURIComponent(sessionId)}`;
+    audio.src = `/api/audio?pi=${encodeURIComponent(pi)}`;
     audio.controls = false;
     audio.loop = false;
 
@@ -340,19 +320,8 @@
       playingBox.style.display = "none";
       doneBox.style.display = "";
       try { if (wakeLock) await wakeLock.release(); } catch(_) {}
-
       markCompletedLocal();
-
-      // mark on server (best effort)
-      try {
-        await apiJson("/api/complete", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ session_id: sessionId })
-        });
-      } catch (_) {}
-
-      // Go to thanks page
+      // send to thanks page
       location.href = "/thanks.html";
     }, { once: true });
 
@@ -370,11 +339,18 @@
   });
 
   (async () => {
-    if (!sessionId) { setUI({ state: "locked" }); return; }
-    try { setUI(await refreshStatus()); }
-    catch (e) { console.error(e); setUI({ state: "locked" }); }
+    if (!pi) { setUI("locked"); return; }
+    try {
+      const s = await refreshStatus();
+      setUI(s.state);
+    } catch (e) {
+      console.error(e);
+      setUI("locked");
+      publicHint.textContent = "Could not verify payment right now. Please refresh.";
+    }
   })();
 })();
 </script>
 </body>
 </html>
+
