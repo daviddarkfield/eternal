@@ -51,7 +51,6 @@
     a { color: rgba(255,255,255,0.85); }
     #err { margin-top: 12px; white-space: pre-wrap; }
 
-    /* “input shell” that matches your UI */
     .field {
       border: 1px solid rgba(255,255,255,0.18);
       background: rgba(255,255,255,0.04);
@@ -80,11 +79,10 @@
       opacity: 0.8;
       margin-top: 12px;
     }
-
-    /* Wallet buttons container */
     #wallets { margin-top: 10px; }
     #walletBtn { width: 100%; }
     .hint { opacity: 0.7; }
+    .microhint { font-size: 12px; opacity: 0.65; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -130,6 +128,10 @@
           </div>
         </div>
 
+        <div class="microhint" id="safariHint" style="display:none;">
+          If Safari only fills your card number, enter expiry + CVC manually (or use Apple Pay).
+        </div>
+
         <div class="row" style="margin-top:14px;">
           <button class="btn" id="payBtn" type="submit">Pay</button>
           <a class="small" href="/">Cancel</a>
@@ -156,6 +158,7 @@
       const fNumber = document.getElementById("f-number");
       const fExpiry = document.getElementById("f-expiry");
       const fCvc = document.getElementById("f-cvc");
+      const safariHint = document.getElementById("safariHint");
 
       function showErr(msg) {
         errBox.style.display = "";
@@ -165,6 +168,10 @@
         errBox.style.display = "none";
         errBox.textContent = "";
       }
+
+      // Show tiny hint on Safari (this is purely UX; doesn't affect payment)
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      if (isSafari) safariHint.style.display = "";
 
       // 1) Get publishable key
       let pub;
@@ -216,13 +223,9 @@
         return;
       }
 
-      // 3) Stripe + Elements (separate card elements = more reliable styling in Safari)
+      // 3) Stripe + Elements
       const stripe = Stripe(pub);
-
-      const elements = stripe.elements({
-        clientSecret,
-        fonts: [],
-      });
+      const elements = stripe.elements({ clientSecret });
 
       const baseStyle = {
         base: {
@@ -252,8 +255,20 @@
       hookFocus(cardExpiry, fExpiry);
       hookFocus(cardCvc, fCvc);
 
-      // 3b) Apple Pay / Google Pay via Payment Request Button (shows only when available)
-      // Note: requires your Stripe account + domain verification (which you’ve done).
+      // Auto-advance to reduce friction when only card number autofills
+      cardNumber.on("change", (ev) => {
+        if (ev && ev.complete) {
+          // slight delay so Safari can finish its fill animation
+          setTimeout(() => cardExpiry.focus(), 60);
+        }
+      });
+      cardExpiry.on("change", (ev) => {
+        if (ev && ev.complete) {
+          setTimeout(() => cardCvc.focus(), 60);
+        }
+      });
+
+      // Wallets (Apple Pay / Google Pay) via Payment Request Button
       const wallets = document.getElementById("wallets");
       try {
         const paymentRequest = stripe.paymentRequest({
@@ -269,12 +284,7 @@
           wallets.style.display = "";
           const prButton = elements.create("paymentRequestButton", {
             paymentRequest,
-            style: {
-              paymentRequestButton: {
-                theme: "dark",
-                height: "44px"
-              }
-            }
+            style: { paymentRequestButton: { theme: "dark", height: "44px" } }
           });
           prButton.mount("#walletBtn");
 
@@ -283,7 +293,6 @@
             payBtn.disabled = true;
             statePill.textContent = "Processing…";
 
-            // Confirm PI using the payment method from Apple Pay / Google Pay
             const { error, paymentIntent } = await stripe.confirmCardPayment(
               clientSecret,
               { payment_method: ev.paymentMethod.id },
@@ -304,13 +313,10 @@
               location.href = `/?pi=${encodeURIComponent(pi)}`;
               return;
             }
-
-            // If further action is required, Stripe may have handled it; fall back:
             location.href = `/?pi=${encodeURIComponent(pi)}`;
           });
         }
       } catch (e) {
-        // Wallets are optional; ignore failures here
         console.warn("wallet setup skipped:", e);
       }
 
@@ -345,15 +351,12 @@
           return;
         }
 
-        // If no error, either succeeded immediately or will redirect for SCA.
         if (paymentIntent && paymentIntent.status === "succeeded") {
           location.href = `/?pi=${encodeURIComponent(pi)}`;
           return;
         }
-        // Otherwise Stripe may redirect automatically.
       });
     })();
   </script>
 </body>
 </html>
-
