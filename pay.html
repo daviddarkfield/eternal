@@ -11,26 +11,17 @@
       background: #000; color: #fff;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       line-height: 1.45;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
-    .wrap {
-      width: 100%;
-      max-width: 520px;
-      padding: 28px 18px 40px;
-    }
-    h1 { font-size: 22px; letter-spacing: 0.12em; margin: 0 0 8px; }
+    .wrap { max-width: 740px; margin: 0 auto; padding: 28px 18px 40px; }
+    h1 { font-size: 30px; letter-spacing: 0.08em; margin: 0 0 18px; }
     .small { opacity: 0.85; font-size: 13px; }
     .card {
       border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 16px;
+      border-radius: 14px;
       padding: 18px;
       margin-top: 18px;
       background: rgba(255,255,255,0.03);
     }
-    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
     .btn {
       appearance: none;
       border: 1px solid rgba(255,255,255,0.35);
@@ -42,13 +33,12 @@
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      justify-content: center;
       gap: 10px;
-      width: 100%;
     }
     .btn:hover { background: rgba(255,255,255,0.12); }
     .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .hr { height: 1px; background: rgba(255,255,255,0.14); margin: 16px 0; }
     .pill {
       display: inline-block;
       padding: 6px 10px;
@@ -58,12 +48,9 @@
       opacity: 0.9;
     }
     .pill.bad { border-color: rgba(255,70,70,0.45); }
-
-    #payment-element { margin-top: 14px; }
-    .hr { height: 1px; background: rgba(255,255,255,0.14); margin: 16px 0; }
-
     a { color: rgba(255,255,255,0.85); }
-    a:hover { color: #fff; }
+    #payment-element { margin-top: 14px; }
+    #err { margin-top: 12px; }
   </style>
 </head>
 <body>
@@ -72,133 +59,124 @@
     <div class="small">DARKFIELD</div>
 
     <div class="card">
-      <div class="row" style="justify-content:space-between;">
-        <div><strong>Unlock</strong></div>
-        <div class="pill">US $1.99</div>
-      </div>
+      <div class="small">Secure payment</div>
+      <div style="margin-top:10px; font-size:22px;"><strong>US$1.99</strong></div>
 
       <div class="hr"></div>
 
-      <div class="small">
-        This purchase unlocks a single play on this browser.
-      </div>
+      <div class="small">Enter your details</div>
+      <form id="form">
+        <div id="payment-element"></div>
 
-      <div id="payment-element"></div>
+        <div class="row" style="margin-top:14px;">
+          <button class="btn" id="payBtn" type="submit">Pay</button>
+          <a class="small" href="/">Cancel</a>
+          <span class="pill" id="statePill">Preparing…</span>
+        </div>
 
-      <div style="margin-top:14px;">
-        <button class="btn" id="payBtn">Pay</button>
-      </div>
+        <div class="small pill bad" id="err" style="display:none;"></div>
+      </form>
 
-      <p class="small" id="msg" style="margin-top:12px;"></p>
-      <p class="small"><a href="/" id="backLink">Back</a></p>
+      <p class="small" style="margin-top:14px; opacity:0.7;">
+        You will be returned to ETERNAL automatically after payment.
+      </p>
     </div>
   </div>
 
   <script src="https://js.stripe.com/v3/"></script>
   <script>
-  (async () => {
-    const msg = document.getElementById("msg");
-    const payBtn = document.getElementById("payBtn");
+    (async () => {
+      const statePill = document.getElementById("statePill");
+      const errBox = document.getElementById("err");
+      const payBtn = document.getElementById("payBtn");
+      const form = document.getElementById("form");
 
-    function setMsg(t, isBad=false) {
-      msg.textContent = t || "";
-      msg.className = "small" + (isBad ? " pill bad" : "");
-    }
-
-    // Get publishable key from server
-    let pk;
-    try {
-      const r = await fetch("/api/config");
-      const j = await r.json();
-      pk = j && j.publishableKey;
-      if (!pk) throw new Error("Missing publishable key");
-    } catch (e) {
-      setMsg("Payment setup error. Please try again later.", true);
-      console.error(e);
-      payBtn.disabled = true;
-      return;
-    }
-
-    // Create PaymentIntent
-    let clientSecret, piId;
-    try {
-      const r = await fetch("/api/create-intent", { method: "POST" });
-      const j = await r.json();
-      clientSecret = j.clientSecret;
-      piId = j.id;
-      if (!clientSecret || !piId) throw new Error("Bad create-intent response");
-    } catch (e) {
-      setMsg("Could not create payment. Please refresh and try again.", true);
-      console.error(e);
-      payBtn.disabled = true;
-      return;
-    }
-
-    const stripe = Stripe(pk);
-
-    const appearance = {
-      theme: "night",
-      variables: {
-        colorBackground: "#000000",
-        colorText: "#ffffff",
-        colorTextSecondary: "rgba(255,255,255,0.75)",
-        colorPrimary: "rgba(255,255,255,0.92)",
-        colorDanger: "rgb(255,70,70)",
-        fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
-        borderRadius: "14px",
-        spacingUnit: "4px",
-      },
-      rules: {
-        ".Input": {
-          backgroundColor: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.18)",
-        },
-        ".Input:focus": { border: "1px solid rgba(255,255,255,0.35)" },
-        ".Label": { color: "rgba(255,255,255,0.85)" },
-        ".Tab": { border: "1px solid rgba(255,255,255,0.18)" },
-        ".Tab--selected": { border: "1px solid rgba(255,255,255,0.35)" },
+      function showErr(msg) {
+        errBox.style.display = "";
+        errBox.textContent = msg;
       }
-    };
 
-    const elements = stripe.elements({ clientSecret, appearance });
-    const paymentElement = elements.create("payment");
-    paymentElement.mount("#payment-element");
-
-    payBtn.addEventListener("click", async () => {
-      payBtn.disabled = true;
-      setMsg("Processing…");
-
+      // 1) Get publishable key
+      let pub;
       try {
-        const { error, paymentIntent } = await stripe.confirmPayment({
+        const cfgRes = await fetch("/api/config");
+        const cfg = await cfgRes.json();
+        pub = cfg.publishableKey;
+      } catch (e) {
+        showErr("Missing Stripe configuration. Please try again later.");
+        statePill.textContent = "Error";
+        return;
+      }
+
+      // 2) Create PaymentIntent on your server
+      let clientSecret, pi;
+      try {
+        statePill.textContent = "Creating…";
+        const r = await fetch("/api/create-intent", { method: "POST" });
+        const data = await r.json();
+        clientSecret = data.clientSecret;
+        pi = data.id;
+        if (!clientSecret || !pi) throw new Error("Bad intent response");
+      } catch (e) {
+        console.error(e);
+        showErr("Could not start payment. Please refresh and try again.");
+        statePill.textContent = "Error";
+        return;
+      }
+
+      // 3) Mount Stripe Elements (dark / ritual)
+      const stripe = Stripe(pub);
+      const appearance = {
+        theme: "night",
+        variables: {
+          colorBackground: "#000000",
+          colorText: "#ffffff",
+          colorDanger: "#ff4646",
+          colorPrimary: "#cfcfcf",
+          borderRadius: "14px",
+          spacingUnit: "6px"
+        },
+        rules: {
+          ".Input": {
+            backgroundColor: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.18)"
+          },
+          ".Label": { color: "rgba(255,255,255,0.8)" }
+        }
+      };
+
+      const elements = stripe.elements({ clientSecret, appearance });
+      const paymentElement = elements.create("payment");
+      paymentElement.mount("#payment-element");
+
+      statePill.textContent = "Ready";
+
+      // 4) Confirm payment (stays on your page; Stripe handles SCA if needed)
+      form.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        errBox.style.display = "none";
+        payBtn.disabled = true;
+        statePill.textContent = "Processing…";
+
+        const return_url = `${location.origin}/?pi=${encodeURIComponent(pi)}`;
+
+        const { error } = await stripe.confirmPayment({
           elements,
-          redirect: "if_required",
-          confirmParams: {
-            return_url: `${location.origin}/?pi=${encodeURIComponent(piId)}`
-          }
+          confirmParams: { return_url }
         });
 
         if (error) {
-          setMsg(error.message || "Payment failed.", true);
+          console.error(error);
+          showErr(error.message || "Payment failed. Please try again.");
           payBtn.disabled = false;
+          statePill.textContent = "Ready";
           return;
         }
 
-        // If no redirect required:
-        if (paymentIntent && paymentIntent.status === "succeeded") {
-          location.href = `/?pi=${encodeURIComponent(piId)}`;
-          return;
-        }
-
-        // If it’s processing or requires_action, Stripe may redirect; if not, show info:
-        setMsg("Continue to complete payment…");
-        payBtn.disabled = false;
-      } catch (e) {
-        console.error(e);
-        setMsg("Payment error. Please try again.", true);
-        payBtn.disabled = false;
-      }
-    });
-  })();
+        // If no error, Stripe will usually redirect automatically (SCA / return_url)
+      });
+    })();
   </script>
 </body>
 </html>
+
