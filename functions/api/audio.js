@@ -68,3 +68,4 @@ async function verifyAndCachePaymentIntent(pi, env, kv) {
 function safeJson(s) {
   try { return JSON.parse(s); } catch { return null; }
 }
+
