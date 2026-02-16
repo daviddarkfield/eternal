@@ -1,7 +1,7 @@
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
 
-  // Accept BOTH, so we can move fully to PaymentIntents without breaking anything.
+  // Accept PaymentIntent id (pi_...) OR legacy session_id
   const token =
     url.searchParams.get("pi") ||
     url.searchParams.get("payment_intent") ||
@@ -15,7 +15,7 @@ export async function onRequestGet({ request, env }) {
 
   let st = safeJson(await kv.get(token)) || null;
 
-  // If unknown but looks like a PaymentIntent, verify with Stripe and cache
+  // If unknown but looks like a PaymentIntent, verify with Stripe and cache.
   if ((!st || !st.paid) && token.startsWith("pi_")) {
     const ok = await verifyAndCachePaymentIntent(token, env, kv);
     if (ok) st = safeJson(await kv.get(token)) || st;
@@ -42,25 +42,29 @@ async function verifyAndCachePaymentIntent(pi, env, kv) {
   const stripeKey = env.STRIPE_SECRET_KEY;
   if (!stripeKey) return false;
 
-  const resp = await fetch(`https://api.stripe.com/v1/payment_intents/${encodeURIComponent(pi)}`, {
-    headers: { Authorization: `Bearer ${stripeKey}` }
-  });
+  const resp = await fetch(
+    `https://api.stripe.com/v1/payment_intents/${encodeURIComponent(pi)}`,
+    { headers: { Authorization: `Bearer ${stripeKey}` } }
+  );
+
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) return false;
 
-  const paid = data.status === "succeeded";
-  if (!paid) return false;
+  if (data.status !== "succeeded") return false;
 
-  await kv.put(pi, JSON.stringify({
-    paid: true,
-    consumed: false,
-    createdAt: Date.now(),
-    stripeStatus: data.status
-  }));
+  await kv.put(
+    pi,
+    JSON.stringify({
+      paid: true,
+      consumed: false,
+      createdAt: Date.now(),
+      stripeStatus: data.status,
+    })
+  );
+
   return true;
 }
 
 function safeJson(s) {
   try { return JSON.parse(s); } catch { return null; }
 }
-
