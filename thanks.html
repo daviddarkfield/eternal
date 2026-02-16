@@ -3,59 +3,48 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>ETERNAL — Thank you</title>
+  <title>ETERNAL — Thanks</title>
   <style>
     :root { color-scheme: dark; }
     body{
-      margin:0; padding:0;
-      background:#000; color:#fff;
+      margin:0; background:#000; color:#fff;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       line-height:1.45;
     }
-    .wrap{ max-width:740px; margin:0 auto; padding:28px 18px 40px; }
-    h1{ font-size:30px; letter-spacing:0.08em; margin:0 0 10px; }
-    .small{ opacity:.85; font-size:13px; }
+    .wrap{max-width:740px;margin:0 auto;padding:28px 18px 40px;}
+    h1{font-size:30px;letter-spacing:.08em;margin:0 0 18px;}
+    .small{opacity:.85;font-size:13px;}
     .card{
-      border:1px solid rgba(255,255,255,0.18);
+      border:1px solid rgba(255,255,255,.18);
       border-radius:14px;
       padding:18px;
       margin-top:18px;
-      background:rgba(255,255,255,0.03);
+      background:rgba(255,255,255,.03);
     }
-    .hr{ height:1px; background:rgba(255,255,255,0.14); margin:16px 0; }
-    a{ color:#fff; text-decoration:underline; }
-    label{ display:block; margin:10px 0 6px; font-size:14px; opacity:.9; }
-    input[type="email"]{
-      width:100%;
-      padding:12px 12px;
-      border-radius:10px;
-      border:1px solid rgba(255,255,255,0.25);
-      background:rgba(255,255,255,0.06);
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+    .input{
+      width:min(420px, 100%);
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.25);
+      background:rgba(255,255,255,.06);
       color:#fff;
       outline:none;
-      font-size:16px;
     }
-    .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
     .btn{
       appearance:none;
-      border:1px solid rgba(255,255,255,0.35);
-      background:rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,.35);
+      background:rgba(255,255,255,.10);
       color:#fff;
       border-radius:999px;
       padding:12px 18px;
       font-size:16px;
       cursor:pointer;
-      display:inline-flex;
-      align-items:center;
-      gap:10px;
     }
-    .btn:hover{ background:rgba(255,255,255,0.12); }
-    .checkbox{
-      display:flex; gap:10px; align-items:flex-start;
-      margin-top:12px;
-    }
-    .checkbox input{ margin-top:3px; }
-    .note{ font-size:12px; opacity:.8; margin-top:12px; }
+    .btn:hover{background:rgba(255,255,255,.14);}
+    a{color:#fff;opacity:.9}
+    a:hover{opacity:1}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.25);font-size:12px;opacity:.9;}
   </style>
 </head>
 <body>
@@ -64,47 +53,37 @@
     <div class="small">DARKFIELD</div>
 
     <div class="card">
-      <p><strong>Thank you.</strong></p>
-      <p class="small">If you’d like to hear about new work, join our mailing list.</p>
+      <div class="pill">Thank you.</div>
+      <p style="margin-top:14px;">If you want to hear about new works, join our mailing list.</p>
 
-      <div class="hr"></div>
-
-      <!-- Mailchimp: minimal embed (posts to your list) -->
+      <!-- Mailchimp minimal POST form -->
       <form
         action="https://darkfield.us16.list-manage.com/subscribe/post?u=d9c850c687cb412006dc377a4&amp;id=9c037aeff3&amp;f_id=00eb35e0f0"
         method="post"
         target="_blank"
         novalidate
       >
-        <label for="mce-EMAIL">Email address <span aria-hidden="true">*</span></label>
-        <input type="email" name="EMAIL" id="mce-EMAIL" required />
-
-        <div class="checkbox">
-          <input type="checkbox" id="gdpr_4727" name="gdpr[4727]" value="Y" required />
-          <label for="gdpr_4727" style="margin:0;">
-            I agree to receive emails from DARKFIELD.
-          </label>
+        <div class="row" style="margin-top:10px;">
+          <input class="input" type="email" name="EMAIL" placeholder="Email address" required>
+          <button class="btn" type="submit">Join</button>
         </div>
 
-        <!-- Tag from your embed -->
-        <input type="hidden" name="tags" value="4538266" />
+        <!-- tag -->
+        <input type="hidden" name="tags" value="4538266">
 
-        <!-- Honeypot (Mailchimp bot trap) -->
-        <div aria-hidden="true" style="position:absolute; left:-5000px;">
-          <input type="text" name="b_d9c850c687cb412006dc377a4_9c037aeff3" tabindex="-1" value="" />
+        <!-- honeypot -->
+        <div aria-hidden="true" style="position:absolute;left:-5000px;">
+          <input type="text" name="b_d9c850c687cb412006dc377a4_9c037aeff3" tabindex="-1" value="">
         </div>
 
-        <div class="row" style="margin-top:14px;">
-          <button class="btn" type="submit">Join the mailing list</button>
-          <a class="btn" href="https://www.instagram.com/darkfield_org" target="_blank" rel="noopener noreferrer">
-            Follow on Instagram
-          </a>
-        </div>
-
-        <p class="note">
-          We use Mailchimp as our marketing platform. By subscribing, you acknowledge your information will be transferred to Mailchimp for processing.
+        <p class="small" style="margin-top:12px;">
+          By joining, you agree your info is processed by Mailchimp. You can unsubscribe at any time.
         </p>
       </form>
+
+      <div style="margin-top:18px;">
+        <a href="https://www.instagram.com/darkfield/" target="_blank" rel="noopener">Follow us on Instagram →</a>
+      </div>
     </div>
   </div>
 </body>
