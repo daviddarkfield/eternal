@@ -166,7 +166,7 @@
   const LS_COMPLETED_AT = "eternal_completed_at_v1";
 
   const qs = new URLSearchParams(location.search);
-  // Accept either ?pi=pi_... (our flow) OR Stripe return params (?payment_intent=pi_...)
+  // Accept either ?pi=pi_... OR Stripe return params (?payment_intent=pi_...)
   const pi = qs.get("pi") || qs.get("payment_intent");
 
   const publicCard = document.getElementById("publicCard");
@@ -320,8 +320,20 @@
       playingBox.style.display = "none";
       doneBox.style.display = "";
       try { if (wakeLock) await wakeLock.release(); } catch(_) {}
+
+      // Mark locally immediately (fast UX)
       markCompletedLocal();
-      // send to thanks page
+
+      // ALSO mark server-side as consumed so "once" is real across refreshes
+      try {
+        await fetch("/api/complete", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          // complete.js currently expects { session_id }, so we send pi in that field.
+          body: JSON.stringify({ session_id: pi })
+        });
+      } catch (_) {}
+
       location.href = "/thanks.html";
     }, { once: true });
 
