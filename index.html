@@ -7,27 +7,15 @@
   <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
-
     body {
       margin: 0; padding: 0;
       background: #000; color: #fff;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       line-height: 1.45;
     }
-
     .wrap { max-width: 740px; margin: 0 auto; padding: 28px 18px 40px; }
-
-    .head {
-      text-align: center;
-      margin-bottom: 10px;
-    }
-
-    h1 {
-      font-size: 30px;
-      letter-spacing: 0.08em;
-      margin: 0 0 8px;
-    }
-
+    .head { text-align: center; margin-bottom: 10px; }
+    h1 { font-size: 30px; letter-spacing: 0.08em; margin: 0 0 8px; }
     .small { opacity: 0.85; font-size: 13px; }
 
     .card {
@@ -51,139 +39,336 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      gap: 10px;
     }
-
     .btn:hover { background: rgba(255,255,255,0.14); }
     .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-    .hr {
-      height: 1px;
-      background: rgba(255,255,255,0.14);
-      margin: 16px 0;
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .hr { height: 1px; background: rgba(255,255,255,0.14); margin: 16px 0; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+
+    .pill {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.25);
+      font-size: 12px;
+      opacity: 0.9;
     }
+    .pill.ok { border-color: rgba(0,255,140,0.35); }
+    .pill.bad { border-color: rgba(255,70,70,0.45); }
 
-    .hidden { display: none !important; }
-
-    audio { width: 100%; margin-top: 12px; }
+    /* Modal */
+    .modalBack {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.72);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+      z-index: 9999;
+    }
+    .modal {
+      max-width: 560px;
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 16px;
+      padding: 18px;
+      background: #070707;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    }
+    .modal h2 { margin: 0 0 10px; font-size: 18px; }
+    .modal p { margin: 0 0 14px; opacity: 0.9; }
   </style>
 </head>
+
 <body>
   <div class="wrap">
-
     <div class="head">
       <h1>ETERNAL</h1>
       <div class="small">DARKFIELD</div>
     </div>
 
-    <div class="card" id="introCard">
+    <!-- Public / pre-payment -->
+    <div class="card" id="publicCard">
+      <p><strong>A SHOW FOR ONE PERSON ALONE IN THEIR BED.</strong><br/>
+      It explores the temptation of eternal life and what price you would pay to achieve it.</p>
 
-      <p style="margin-top:0; font-weight:700;">
-      </p>
-
-      <p style="margin-top:-8px;">
-      </p>
+      <p class="small">“I want you to believe... to believe in things that you cannot.” — Bram Stoker</p>
 
       <div class="hr"></div>
 
-      <p style="margin-top:0;">
+      <p>
+        You have been chosen and we thank you for your sacrifice.
+        In return we offer you the opportunity for eternal life — but there are conditions.
       </p>
 
-      <!-- Centered Button -->
+      <p class="small">
+        ETERNAL is a 24 minute immersive audio experience for one person, alone in their bed.
+        Commissioned by the 2020 Bram Stoker Festival, Dublin.
+      </p>
+
       <div style="text-align:center; margin-top:18px;">
         <button class="btn" id="buyBtn">Listen now ($1.99)</button>
       </div>
 
-      <!-- hidden state pill kept for JS logic -->
-      <span class="hidden" id="statePill">Locked</span>
+      <p class="small" id="publicHint" style="margin-top:12px; text-align:center;"></p>
     </div>
 
+    <!-- Post-payment pre-play ritual -->
     <div class="card" id="paidCard" style="display:none;">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div class="row" style="justify-content:space-between;">
         <div><strong>Unlocked</strong></div>
-        <button class="btn" id="resetBtn" type="button">Reset (testing)</button>
+        <div class="pill ok" id="paidPill">Ready</div>
       </div>
 
-      <audio id="player" controls preload="none"></audio>
+      <div class="hr"></div>
 
-      <p class="small" style="margin-top:10px; opacity:0.75;">
-        This audio will play once per browser. When it ends you will be taken to the final page.
+      <p><strong>Before you begin</strong></p>
+      <ul>
+        <li>Listen with headphones.</li>
+        <li>Get into bed. Alone.</li>
+        <li>Lock the door. Silence your phone.</li>
+        <li>This is scary.</li>
+      </ul>
+
+      <p class="small">
+        When you press play, the audio will run to the end.
+        You cannot pause or restart it once it begins.
       </p>
-    </div>
 
+      <div class="row" style="margin-top:14px;">
+        <button class="btn" id="playBtn">Play</button>
+        <span class="pill mono" id="piTag" style="display:none;"></span>
+        <button class="btn" id="resetBtn" style="display:none;">Reset (testing)</button>
+      </div>
+
+      <div style="margin-top:14px; display:none;" id="playingBox">
+        <div class="pill">Playing…</div>
+        <div class="small" style="margin-top:8px;">Keep this tab open. Do not refresh.</div>
+      </div>
+
+      <div style="margin-top:14px; display:none;" id="doneBox">
+        <div class="pill ok">Completed</div>
+        <div class="small" style="margin-top:8px;">Thank you.</div>
+      </div>
+
+      <!-- IMPORTANT: no controls -->
+      <audio id="player" preload="none" playsinline></audio>
+    </div>
   </div>
 
-  <script>
-    (async () => {
-      const buyBtn = document.getElementById("buyBtn");
-      const resetBtn = document.getElementById("resetBtn");
-      const introCard = document.getElementById("introCard");
-      const paidCard = document.getElementById("paidCard");
-      const player = document.getElementById("player");
+  <!-- Final warning modal -->
+  <div class="modalBack" id="modalBack" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2>Final warning</h2>
+      <p>
+        This experience will play through to the end.<br/>
+        You cannot pause or restart it once it begins.
+      </p>
+      <div class="row">
+        <button class="btn" id="confirmBtn">I understand. Begin.</button>
+        <button class="btn" id="cancelBtn">Not yet</button>
+      </div>
+    </div>
+  </div>
 
-      const url = new URL(location.href);
-      const pi = url.searchParams.get("pi") || "";
+<script>
+(() => {
+  const LS_COMPLETED_AT = "eternal_completed_at_v1";
 
-      const LS_DONE = "ETERNAL_DONE_V1";
-      const LS_PI   = "ETERNAL_PI_V1";
+  const qs = new URLSearchParams(location.search);
+  // Accept either ?pi=pi_... OR Stripe return params (?payment_intent=pi_...)
+  const pi = qs.get("pi") || qs.get("payment_intent");
 
-      function isCompleted() { return localStorage.getItem(LS_DONE) === "1"; }
-      function markCompleted() { localStorage.setItem(LS_DONE, "1"); }
-      function rememberPi(x) { if (x) localStorage.setItem(LS_PI, x); }
-      function getRememberedPi() { return localStorage.getItem(LS_PI) || ""; }
+  const publicCard = document.getElementById("publicCard");
+  const paidCard = document.getElementById("paidCard");
+  const buyBtn = document.getElementById("buyBtn");
+  const playBtn = document.getElementById("playBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const paidPill = document.getElementById("paidPill");
+  const piTag = document.getElementById("piTag");
+  const publicHint = document.getElementById("publicHint");
 
-      buyBtn.addEventListener("click", () => {
-        location.href = "/pay";
-      });
+  const modalBack = document.getElementById("modalBack");
+  const confirmBtn = document.getElementById("confirmBtn");
+  const cancelBtn = document.getElementById("cancelBtn");
 
-      resetBtn.addEventListener("click", () => {
-        localStorage.removeItem(LS_DONE);
-        localStorage.removeItem(LS_PI);
-        location.href = "/";
-      });
+  const playingBox = document.getElementById("playingBox");
+  const doneBox = document.getElementById("doneBox");
+  const audio = document.getElementById("player");
+  let wakeLock = null;
 
-      async function checkPaid(piVal) {
-        const r = await fetch(`/api/status?pi=${encodeURIComponent(piVal)}`, { cache: "no-store" });
-        if (!r.ok) return { ok:false };
-        return await r.json();
+  function isCompleted() {
+    return Number(localStorage.getItem(LS_COMPLETED_AT) || "0") > 0;
+  }
+  function markCompletedLocal() {
+    localStorage.setItem(LS_COMPLETED_AT, String(Date.now()));
+  }
+
+  // Reset only on pages.dev
+  if (location.hostname.includes("pages.dev")) {
+    resetBtn.style.display = "";
+    resetBtn.addEventListener("click", () => {
+      if (!confirm("Reset completed state on this browser?")) return;
+      localStorage.removeItem(LS_COMPLETED_AT);
+      location.reload();
+    });
+  }
+
+  function showModal(onConfirm) {
+    modalBack.style.display = "flex";
+    confirmBtn.onclick = () => { modalBack.style.display = "none"; onConfirm(); };
+    cancelBtn.onclick = () => { modalBack.style.display = "none"; };
+  }
+
+  async function apiJson(path, opts) {
+    const res = await fetch(path, opts);
+    const text = await res.text().catch(()=> "");
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
+    if (!res.ok) throw new Error(`API ${path} failed: ${res.status} ${text}`);
+    return data;
+  }
+
+  async function refreshStatus() {
+    if (!pi) return { ok: true, state: "locked" };
+    return apiJson(`/api/status?pi=${encodeURIComponent(pi)}`, { method: "GET" });
+  }
+
+  function setUI(state) {
+    if (!pi) {
+      publicCard.style.display = "";
+      paidCard.style.display = "none";
+      publicHint.textContent = "";
+      return;
+    }
+
+    piTag.style.display = "";
+    piTag.textContent = `pi: ${pi.slice(0, 12)}…`;
+
+    if (isCompleted()) {
+      publicCard.style.display = "none";
+      paidCard.style.display = "";
+      paidPill.textContent = "Completed";
+      playBtn.disabled = true;
+      doneBox.style.display = "";
+      return;
+    }
+
+    if (state === "unlocked") {
+      publicCard.style.display = "none";
+      paidCard.style.display = "";
+      paidPill.textContent = "Ready";
+      playBtn.disabled = false;
+      doneBox.style.display = "none";
+      return;
+    }
+
+    if (state === "locked") {
+      publicCard.style.display = "";
+      paidCard.style.display = "none";
+      publicHint.textContent = "Payment not verified yet. If you just paid, wait a moment and refresh.";
+      return;
+    }
+
+    publicCard.style.display = "";
+    paidCard.style.display = "none";
+    publicHint.textContent = "Processing…";
+  }
+
+  buyBtn.addEventListener("click", () => {
+    // IMPORTANT: set this to whichever you are actually serving
+    // If your payment page is /pay (recommended): keep as is.
+    // If it is /pay.html: change to "/pay.html".
+    location.href = "/pay";
+  });
+
+  async function acquireWakeLock() {
+    try {
+      if ("wakeLock" in navigator) {
+        wakeLock = await navigator.wakeLock.request("screen");
       }
+    } catch (_) {}
+  }
 
-      function showUnlocked(piVal) {
-        introCard.style.display = "none";
-        paidCard.style.display = "";
-        rememberPi(piVal);
+  function attachAntiPause() {
+    audio.addEventListener("pause", () => {
+      if (!audio.ended) audio.play().catch(()=>{});
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && !audio.ended) audio.play().catch(()=>{});
+    });
+    let lastTime = 0;
+    audio.addEventListener("timeupdate", () => { if (!audio.seeking) lastTime = audio.currentTime; });
+    audio.addEventListener("seeking", () => { audio.currentTime = lastTime || 0; });
+  }
 
-        player.src = `/api/audio?pi=${encodeURIComponent(piVal)}`;
+  async function beginPlayback() {
+    if (isCompleted()) return;
+    if (!pi) { alert("Missing payment reference. Please pay again."); return; }
 
-        player.onended = () => {
-          markCompleted();
-          location.href = "/thanks";
-        };
+    playBtn.disabled = true;
+    await acquireWakeLock();
 
-        player.play().catch(() => {});
-      }
+    playingBox.style.display = "";
+    doneBox.style.display = "none";
 
-      if (pi) {
-        try {
-          const st = await checkPaid(pi);
-          if (st && st.ok && st.paid) {
-            showUnlocked(pi);
-            return;
-          }
-        } catch {}
-      }
+    audio.src = `/api/audio?pi=${encodeURIComponent(pi)}`;
+    audio.controls = false;
+    audio.loop = false;
 
-      const remembered = getRememberedPi();
-      if (remembered) {
-        try {
-          const st = await checkPaid(remembered);
-          if (st && st.ok && st.paid) {
-            showUnlocked(remembered);
-            return;
-          }
-        } catch {}
-      }
-    })();
-  </script>
+    attachAntiPause();
+
+    audio.addEventListener("ended", async () => {
+      playingBox.style.display = "none";
+      doneBox.style.display = "";
+      try { if (wakeLock) await wakeLock.release(); } catch(_) {}
+
+      // Mark locally immediately
+      markCompletedLocal();
+
+      // Mark server-side as consumed (so "once" is real across refreshes)
+      try {
+        await fetch("/api/complete", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          // Backwards-compatible with complete.js expecting { session_id }
+          body: JSON.stringify({ session_id: pi })
+        });
+      } catch (_) {}
+
+      location.href = "/thanks";
+    }, { once: true });
+
+    await audio.play();
+  }
+
+  playBtn.addEventListener("click", () => {
+    if (isCompleted()) return;
+    showModal(() => beginPlayback().catch(e => {
+      console.error(e);
+      alert("Could not start playback. Please try again.");
+      playBtn.disabled = false;
+      playingBox.style.display = "none";
+    }));
+  });
+
+  (async () => {
+    if (!pi) { setUI("locked"); return; }
+    try {
+      const s = await refreshStatus();
+      // Expecting { ok, state } where state is "unlocked" / "locked" (your status.js)
+      setUI(s.state || (s.paid ? "unlocked" : "locked"));
+    } catch (e) {
+      console.error(e);
+      setUI("locked");
+      publicHint.textContent = "Could not verify payment right now. Please refresh.";
+    }
+  })();
+})();
+</script>
 </body>
 </html>
 
