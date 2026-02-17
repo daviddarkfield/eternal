@@ -16,7 +16,8 @@ export async function onRequestGet({ request, env }) {
 
   let st = safeJson(await kv.get(pi)) || null;
 
-  // If unknown but looks like a PaymentIntent, verify with Stripe and cache.
+  // If unknown but looks like a PaymentIntent, verify with Stripe and cache *paid/consumed only*.
+  // CRITICAL: DO NOT mint deviceToken here. That must happen only in /api/claim.
   if ((!st || !st.paid) && pi.startsWith("pi_")) {
     const ok = await verifyAndCachePaymentIntent(pi, env, kv);
     if (ok) st = safeJson(await kv.get(pi)) || st;
@@ -26,11 +27,11 @@ export async function onRequestGet({ request, env }) {
   if (st.consumed) return new Response("Already consumed", { status: 403 });
 
   // ---- Device-bound token gating (cookie transport) ----
-  // Client should mirror the deviceToken into cookie: eternal_device=<token>
+  // Cookie is set ONLY by /api/claim after verifying claimSecret from URL fragment.
   const cookies = parseCookies(request.headers.get("cookie") || "");
   const deviceCookie = (cookies.eternal_device || "").trim();
 
-  // If token hasn’t been minted yet (older KV records), refuse and force /api/status to heal it.
+  // If token hasn’t been minted yet (new PI not claimed, or older KV), refuse and require claim.
   if (!st.deviceToken || typeof st.deviceToken !== "string" || st.deviceToken.length < 16) {
     return new Response("DEVICE_TOKEN_REQUIRED", { status: 401 });
   }
@@ -68,13 +69,17 @@ async function verifyAndCachePaymentIntent(pi, env, kv) {
 
   if (data.status !== "succeeded") return false;
 
-  // Mint a device token even on first-seen PI so /api/status and /api/audio share a single record shape.
+  const existing = safeJson(await kv.get(pi)) || {};
+
+  // Cache paid state, but DO NOT add deviceToken here.
+  // deviceToken must only be minted by /api/claim after claimSecret validation.
   const rec = {
+    ...existing,
     paid: true,
-    consumed: false,
-    createdAt: Date.now(),
+    consumed: !!existing.consumed,
+    createdAt: existing.createdAt || Date.now(),
     stripeStatus: data.status,
-    deviceToken: mintToken(),
+    updatedAt: Date.now(),
   };
 
   await kv.put(pi, JSON.stringify(rec));
@@ -102,13 +107,4 @@ function parseCookies(cookieHeader) {
     out[k] = decodeURIComponent(v);
   }
   return out;
-}
-
-function mintToken() {
-  const uuid = crypto.randomUUID();
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  let hex = "";
-  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, "0");
-  return `${uuid}.${hex}`;
 }
