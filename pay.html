@@ -157,7 +157,7 @@
       }
 
       // 2) Create PaymentIntent on your server
-      let clientSecret, pi;
+      let clientSecret, pi, claimSecret;
       try {
         const r = await fetch("/api/create-intent", { method: "POST", cache: "no-store" });
         const text = await r.text();
@@ -166,7 +166,8 @@
         if (!r.ok) throw new Error(text || `create-intent ${r.status}`);
         clientSecret = data.clientSecret;
         pi = data.id;
-        if (!clientSecret || !pi) throw new Error("Bad intent response");
+        claimSecret = data.claimSecret;
+        if (!clientSecret || !pi || !claimSecret) throw new Error("Bad intent response");
       } catch (e) {
         console.error(e);
         showErr("Could not start payment. Please refresh and try again.");
@@ -222,10 +223,12 @@
       form.addEventListener("submit", async (ev) => {
         ev.preventDefault();
         clearErr();
-
         payBtn.disabled = true;
 
-        const return_url = `${location.origin}/?pi=${encodeURIComponent(pi)}`;
+        // IMPORTANT:
+        // Use a URL fragment for the claim secret so it is NOT sent to the server (and is not logged),
+        // and can be stripped immediately by index.html after claiming the device cookie.
+        const return_url = `${location.origin}/?pi=${encodeURIComponent(pi)}#c=${encodeURIComponent(claimSecret)}`;
 
         const { error } = await stripe.confirmPayment({
           elements,
@@ -243,4 +246,3 @@
   </script>
 </body>
 </html>
-
