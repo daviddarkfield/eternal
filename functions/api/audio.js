@@ -1,28 +1,44 @@
+// functions/api/audio.js
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
 
   // Accept PaymentIntent id (pi_...) OR legacy session_id
-  const token =
+  const pi =
     url.searchParams.get("pi") ||
     url.searchParams.get("payment_intent") ||
     url.searchParams.get("session_id") ||
     "";
 
-  if (!token) return new Response("Missing pi/session_id", { status: 400 });
+  if (!pi) return new Response("Missing pi/session_id", { status: 400 });
 
   const kv = env.ETERNAL_KV;
   if (!kv) return new Response("Missing ETERNAL_KV binding", { status: 500 });
 
-  let st = safeJson(await kv.get(token)) || null;
+  let st = safeJson(await kv.get(pi)) || null;
 
   // If unknown but looks like a PaymentIntent, verify with Stripe and cache.
-  if ((!st || !st.paid) && token.startsWith("pi_")) {
-    const ok = await verifyAndCachePaymentIntent(token, env, kv);
-    if (ok) st = safeJson(await kv.get(token)) || st;
+  if ((!st || !st.paid) && pi.startsWith("pi_")) {
+    const ok = await verifyAndCachePaymentIntent(pi, env, kv);
+    if (ok) st = safeJson(await kv.get(pi)) || st;
   }
 
   if (!st || !st.paid) return new Response("Not paid", { status: 402 });
   if (st.consumed) return new Response("Already consumed", { status: 403 });
+
+  // ---- Device-bound token gating (cookie transport) ----
+  // Client should mirror the deviceToken into cookie: eternal_device=<token>
+  const cookies = parseCookies(request.headers.get("cookie") || "");
+  const deviceCookie = (cookies.eternal_device || "").trim();
+
+  // If token hasn’t been minted yet (older KV records), refuse and force /api/status to heal it.
+  if (!st.deviceToken || typeof st.deviceToken !== "string" || st.deviceToken.length < 16) {
+    return new Response("DEVICE_TOKEN_REQUIRED", { status: 401 });
+  }
+
+  if (!deviceCookie || deviceCookie !== st.deviceToken) {
+    return new Response("DEVICE_TOKEN_REQUIRED", { status: 401 });
+  }
+  // -----------------------------------------------
 
   const audioUrl =
     env.AUDIO_URL ||
@@ -52,20 +68,47 @@ async function verifyAndCachePaymentIntent(pi, env, kv) {
 
   if (data.status !== "succeeded") return false;
 
-  await kv.put(
-    pi,
-    JSON.stringify({
-      paid: true,
-      consumed: false,
-      createdAt: Date.now(),
-      stripeStatus: data.status,
-    })
-  );
+  // Mint a device token even on first-seen PI so /api/status and /api/audio share a single record shape.
+  const rec = {
+    paid: true,
+    consumed: false,
+    createdAt: Date.now(),
+    stripeStatus: data.status,
+    deviceToken: mintToken(),
+  };
 
+  await kv.put(pi, JSON.stringify(rec));
   return true;
 }
 
 function safeJson(s) {
-  try { return JSON.parse(s); } catch { return null; }
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
 }
 
+function parseCookies(cookieHeader) {
+  const out = {};
+  if (!cookieHeader) return out;
+  const parts = cookieHeader.split(";");
+  for (const part of parts) {
+    const i = part.indexOf("=");
+    if (i === -1) continue;
+    const k = part.slice(0, i).trim();
+    const v = part.slice(i + 1).trim();
+    if (!k) continue;
+    out[k] = decodeURIComponent(v);
+  }
+  return out;
+}
+
+function mintToken() {
+  const uuid = crypto.randomUUID();
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  let hex = "";
+  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, "0");
+  return `${uuid}.${hex}`;
+}
