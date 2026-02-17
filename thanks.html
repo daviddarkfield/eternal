@@ -60,10 +60,22 @@
       opacity:.9;
     }
 
-    .ig{
+    .cta{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:14px;
+    }
+
+    .btnLink{
       display:inline-flex;
       align-items:center;
       gap:14px;
+
+      width:100%;
+      max-width:420px;        /* <- forces identical size */
+      justify-content:flex-start;
+
       padding:16px 22px;
       border-radius:999px;
       border:1px solid rgba(255,255,255,.28);
@@ -71,39 +83,38 @@
       text-decoration:none;
       color:#fff;
       transition:background .2s ease, border-color .2s ease;
-      margin-bottom: 14px;
     }
 
-    .ig:hover{
+    .btnLink:hover{
       background:rgba(255,255,255,.12);
       border-color:rgba(255,255,255,.45);
     }
 
-    .ig svg{
+    .btnLink svg{
       width:22px;
       height:22px;
       opacity:.95;
       flex:0 0 auto;
     }
 
-    .ig .txt{
+    .btnLink .txt{
       display:flex;
       flex-direction:column;
       align-items:flex-start;
       gap:2px;
       text-align:left;
+      min-width:0;
     }
 
-    .ig .txt .t1{
+    .btnLink .txt .t1{
       font-weight:600;
       letter-spacing:.02em;
     }
 
-    .ig .txt .t2{
+    .btnLink .txt .t2{
       font-size:13px;
       opacity:.75;
     }
-
   </style>
 </head>
 
@@ -118,33 +129,34 @@
     <div class="card">
       <p>Thank you.</p>
 
-      <a class="ig" href="https://www.instagram.com/darkfield_org" target="_blank" rel="noopener">
-        <!-- Instagram glyph -->
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M7.5 2h9A5.5 5.5 0 0 1 22 7.5v9A5.5 5.5 0 0 1 16.5 22h-9A5.5 5.5 0 0 1 2 16.5v-9A5.5 5.5 0 0 1 7.5 2Z" stroke="currentColor" stroke-width="1.5"/>
-          <path d="M12 16.2a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4Z" stroke="currentColor" stroke-width="1.5"/>
-          <path d="M17.4 6.6h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-        </svg>
+      <div class="cta">
+        <a class="btnLink" href="https://www.instagram.com/darkfield_org" target="_blank" rel="noopener">
+          <!-- Instagram glyph -->
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M7.5 2h9A5.5 5.5 0 0 1 22 7.5v9A5.5 5.5 0 0 1 16.5 22h-9A5.5 5.5 0 0 1 2 16.5v-9A5.5 5.5 0 0 1 7.5 2Z" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M12 16.2a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4Z" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M17.4 6.6h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+          </svg>
 
-        <span class="txt">
-          <span class="t1">Follow us on Instagram</span>
-          <span class="t2">@darkfield_org</span>
-        </span>
-      </a>
+          <span class="txt">
+            <span class="t1">Follow us on Instagram</span>
+            <span class="t2">@darkfield_org</span>
+          </span>
+        </a>
 
-      <a class="ig" href="https://mailchi.mp/darkfield.org/sign-up" target="_blank" rel="noopener">
-        <!-- Mail / envelope glyph -->
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M4 6.5h16A2 2 0 0 1 22 8.5v9A2 2 0 0 1 20 19.5H4A2 2 0 0 1 2 17.5v-9A2 2 0 0 1 4 6.5Z" stroke="currentColor" stroke-width="1.5"/>
-          <path d="M4 8l8 6 8-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <a class="btnLink" href="https://mailchi.mp/darkfield.org/sign-up" target="_blank" rel="noopener">
+          <!-- Mail / envelope glyph -->
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 6.5h16A2 2 0 0 1 22 8.5v9A2 2 0 0 1 20 19.5H4A2 2 0 0 1 2 17.5v-9A2 2 0 0 1 4 6.5Z" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M4 8l8 6 8-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
 
-        <span class="txt">
-          <span class="t1">Join our mailing list</span>
-          <span class="t2">darkfield.org</span>
-        </span>
-      </a>
-
+          <span class="txt">
+            <span class="t1">Join our mailing list</span>
+            <span class="t2">darkfield.org</span>
+          </span>
+        </a>
+      </div>
     </div>
 
   </div>
