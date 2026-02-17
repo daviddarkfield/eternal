@@ -142,16 +142,6 @@
 
       <div class="hr"></div>
 
-      <p>
-        You have been chosen and we thank you for your sacrifice.
-        In return we offer you the opportunity for eternal life — but there are conditions.
-      </p>
-
-      <p class="small">
-        ETERNAL is a 24 minute immersive audio experience for one person, alone in their bed.
-        Commissioned by the 2020 Bram Stoker Festival, Dublin.
-      </p>
-
       <div style="text-align:center; margin-top:18px;">
         <button class="btn" id="buyBtn">Listen now ($1.99)</button>
       </div>
@@ -171,9 +161,8 @@
       <p><strong>Before you begin</strong></p>
       <ul>
         <li>Listen with headphones.</li>
-        <li>Get into bed. Alone.</li>
-        <li>Lock the door. Silence your phone.</li>
-        <li>This is scary.</li>
+        <li>Go to the bedroom</li>
+        <li>switch your phone to DO NOT DISTURB.</li>
       </ul>
 
       <p class="small">
@@ -209,8 +198,9 @@
     <div class="modal">
       <h2>Final warning</h2>
       <p>
-        This experience will play through to the end.<br/>
-        You cannot pause or restart it once it begins.
+        ETERNAL will play through to the end.<br/>
+        DURATIION : 24 MINUTES<br/>
+        You cannot pause or restart the audio once it begins.
       </p>
       <div class="row">
         <button class="btn" id="confirmBtn">I understand. Begin.</button>
@@ -357,7 +347,7 @@
 
   async function beginPlayback() {
     if (isCompleted()) return;
-    if (!pi) { alert("Missing payment reference. Please pay again."); return; }
+    if (!pi) { alert("Missing payment reference. Please try again."); return; }
 
     playBtn.disabled = true;
     await acquireWakeLock();
