@@ -64,7 +64,6 @@
 
     .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
     .hr { height: 1px; background: rgba(255,255,255,0.14); margin: 16px 0; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
 
     .pill {
       display: inline-block;
@@ -77,11 +76,12 @@
     .pill.ok { border-color: rgba(0,255,140,0.35); }
     .pill.bad { border-color: rgba(255,70,70,0.45); }
 
-    /* IMPORTANT:
-       Only the public card is centered.
-       The paid card stays left-aligned (normal) so it doesn't look "right-justified" or weird.
-    */
+    /* Only the public card is centered */
     #publicCard { text-align: center; }
+    #publicHint { text-align: center; margin-top: 12px; }
+
+    /* Center the Play button row (only) inside the paid card */
+    .centerRow { justify-content: center; }
 
     /* Modal */
     .modalBack {
@@ -131,9 +131,6 @@
       50%  { opacity: 0.90; transform: scale(1.01); }
       100% { opacity: 0.20; transform: scale(0.99); }
     }
-
-    /* Center the buy button but keep hint centered too */
-    #publicHint { text-align: center; margin-top: 12px; }
   </style>
 </head>
 
@@ -159,7 +156,7 @@
 
     <p class="small" id="publicHint"></p>
 
-    <!-- Post-payment pre-play ritual (LEFT aligned) -->
+    <!-- Post-payment pre-play ritual (LEFT aligned for text) -->
     <div class="card" id="paidCard" style="display:none; text-align:left;">
       <div class="row" style="justify-content:space-between;">
         <div><strong>Unlocked</strong></div>
@@ -180,10 +177,9 @@
         You cannot pause or restart the audio once it begins.
       </p>
 
-      <div class="row" style="margin-top:14px;">
+      <!-- CENTERED play button -->
+      <div class="row centerRow" style="margin-top:14px;">
         <button class="btn" id="playBtn">Play</button>
-        <span class="pill mono" id="piTag" style="display:none;"></span>
-        <button class="btn" id="resetBtn" style="display:none;">Reset (testing)</button>
       </div>
 
       <div style="margin-top:14px; display:none;" id="doneBox">
@@ -232,9 +228,7 @@
 
   const buyBtn = document.getElementById("buyBtn");
   const playBtn = document.getElementById("playBtn");
-  const resetBtn = document.getElementById("resetBtn");
   const paidPill = document.getElementById("paidPill");
-  const piTag = document.getElementById("piTag");
   const publicHint = document.getElementById("publicHint");
   const doneBox = document.getElementById("doneBox");
 
@@ -250,15 +244,6 @@
   }
   function markCompletedLocal() {
     localStorage.setItem(LS_COMPLETED_AT, String(Date.now()));
-  }
-
-  if (location.hostname.includes("pages.dev")) {
-    resetBtn.style.display = "";
-    resetBtn.addEventListener("click", () => {
-      if (!confirm("Reset completed state on this browser?")) return;
-      localStorage.removeItem(LS_COMPLETED_AT);
-      location.reload();
-    });
   }
 
   function showModal(onConfirm) {
@@ -296,9 +281,6 @@
       publicHint.textContent = "";
       return;
     }
-
-    piTag.style.display = "";
-    piTag.textContent = `pi: ${pi.slice(0, 12)}…`;
 
     if (isCompleted()) {
       publicCard.style.display = "none";
