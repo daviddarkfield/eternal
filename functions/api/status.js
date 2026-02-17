@@ -1,23 +1,20 @@
 // functions/api/status.js
+// IMPORTANT: status must NEVER mint/return deviceToken.
+// Otherwise any device with the shared ?pi=... URL can "self-heal" and become authorized.
+
 export async function onRequestGet({ request, env }) {
   const stripeKey = env.STRIPE_SECRET_KEY;
-  if (!stripeKey) {
-    return json({ ok: false, error: "Missing STRIPE_SECRET_KEY" }, 500);
-  }
+  if (!stripeKey) return json({ ok: false, error: "Missing STRIPE_SECRET_KEY" }, 500);
 
   const kv = env.ETERNAL_KV;
-  if (!kv) {
-    return json({ ok: false, error: "Missing ETERNAL_KV binding" }, 500);
-  }
+  if (!kv) return json({ ok: false, error: "Missing ETERNAL_KV binding" }, 500);
 
   const url = new URL(request.url);
   const pi = url.searchParams.get("pi");
 
-  if (!pi) {
-    return json({ ok: true, state: "locked", paid: false }, 200);
-  }
+  if (!pi) return json({ ok: true, state: "locked", paid: false }, 200);
 
-  // 1) Ask Stripe (source of truth for payment status)
+  // Ask Stripe (source of truth for payment status)
   const resp = await fetch(
     `https://api.stripe.com/v1/payment_intents/${encodeURIComponent(pi)}`,
     { headers: { Authorization: `Bearer ${stripeKey}` } }
@@ -31,7 +28,6 @@ export async function onRequestGet({ request, env }) {
 
   const paid = data.status === "succeeded";
 
-  // If not paid, no KV mutation needed
   if (!paid) {
     return json(
       {
@@ -45,40 +41,31 @@ export async function onRequestGet({ request, env }) {
     );
   }
 
-  // 2) Paid: ensure KV record exists + has a deviceToken
+  // Paid: read KV to surface server-side consumed state (but DO NOT mint/return tokens here)
   const existingRaw = await kv.get(pi);
-  let rec = safeJson(existingRaw, null);
+  const rec = safeJson(existingRaw, null) || {};
+  const consumed = !!rec.consumed;
 
-  if (!rec || typeof rec !== "object") {
-    rec = {
+  // Optional: keep Stripe status fresh in KV if record exists (no secrets added here)
+  if (existingRaw) {
+    const next = {
+      ...rec,
       paid: true,
-      consumed: false,
       stripeStatus: data.status,
-      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      consumed,
     };
+    await kv.put(pi, JSON.stringify(next));
   }
-
-  // Normalize / keep up to date
-  rec.paid = true;
-  rec.stripeStatus = data.status;
-  rec.updatedAt = Date.now();
-  rec.consumed = !!rec.consumed;
-
-  if (!rec.deviceToken || typeof rec.deviceToken !== "string" || rec.deviceToken.length < 16) {
-    rec.deviceToken = mintToken();
-  }
-
-  await kv.put(pi, JSON.stringify(rec));
 
   return json(
     {
       ok: true,
-      state: rec.consumed ? "consumed" : "unlocked",
+      state: consumed ? "consumed" : "unlocked",
       paid: true,
-      consumed: rec.consumed,
+      consumed,
       status: data.status,
       id: data.id,
-      deviceToken: rec.deviceToken, // client stores in localStorage + mirrors into cookie
     },
     200
   );
@@ -101,14 +88,4 @@ function safeJson(s, fallback) {
   } catch {
     return fallback;
   }
-}
-
-function mintToken() {
-  // UUID + 32 bytes random hex -> long unguessable token
-  const uuid = crypto.randomUUID();
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  let hex = "";
-  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, "0");
-  return `${uuid}.${hex}`;
 }
