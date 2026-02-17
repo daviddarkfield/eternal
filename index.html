@@ -80,6 +80,33 @@
     }
     .modal h2 { margin: 0 0 10px; font-size: 18px; }
     .modal p { margin: 0 0 14px; opacity: 0.9; }
+
+    /* “Playing page” */
+    .playingScreen {
+      display: none;
+      margin-top: 18px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.03);
+      padding: 44px 18px;
+      text-align: center;
+      min-height: 260px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .playingInner { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .playingWord {
+      letter-spacing: 0.22em;
+      font-size: 14px;
+      opacity: 0.85;
+      animation: pulse 2.6s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%   { opacity: 0.20; transform: scale(0.99); }
+      50%  { opacity: 0.90; transform: scale(1.01); }
+      100% { opacity: 0.20; transform: scale(0.99); }
+    }
   </style>
 </head>
 
@@ -144,11 +171,6 @@
         <button class="btn" id="resetBtn" style="display:none;">Reset (testing)</button>
       </div>
 
-      <div style="margin-top:14px; display:none;" id="playingBox">
-        <div class="pill">Playing…</div>
-        <div class="small" style="margin-top:8px;">Keep this tab open. Do not refresh.</div>
-      </div>
-
       <div style="margin-top:14px; display:none;" id="doneBox">
         <div class="pill ok">Completed</div>
         <div class="small" style="margin-top:8px;">Thank you.</div>
@@ -156,6 +178,13 @@
 
       <!-- IMPORTANT: no controls -->
       <audio id="player" preload="none" playsinline></audio>
+    </div>
+
+    <!-- Playing “page” (shown after confirm) -->
+    <div class="playingScreen" id="playingScreen">
+      <div class="playingInner">
+        <div class="playingWord">PLAYING</div>
+      </div>
     </div>
   </div>
 
@@ -179,24 +208,24 @@
   const LS_COMPLETED_AT = "eternal_completed_at_v1";
 
   const qs = new URLSearchParams(location.search);
-  // Accept either ?pi=pi_... OR Stripe return params (?payment_intent=pi_...)
   const pi = qs.get("pi") || qs.get("payment_intent");
 
   const publicCard = document.getElementById("publicCard");
   const paidCard = document.getElementById("paidCard");
+  const playingScreen = document.getElementById("playingScreen");
+
   const buyBtn = document.getElementById("buyBtn");
   const playBtn = document.getElementById("playBtn");
   const resetBtn = document.getElementById("resetBtn");
   const paidPill = document.getElementById("paidPill");
   const piTag = document.getElementById("piTag");
   const publicHint = document.getElementById("publicHint");
+  const doneBox = document.getElementById("doneBox");
 
   const modalBack = document.getElementById("modalBack");
   const confirmBtn = document.getElementById("confirmBtn");
   const cancelBtn = document.getElementById("cancelBtn");
 
-  const playingBox = document.getElementById("playingBox");
-  const doneBox = document.getElementById("doneBox");
   const audio = document.getElementById("player");
   let wakeLock = null;
 
@@ -237,7 +266,16 @@
     return apiJson(`/api/status?pi=${encodeURIComponent(pi)}`, { method: "GET" });
   }
 
+  function showPlayingPageUI() {
+    // "audio playing page": only header + pulsing PLAYING
+    publicCard.style.display = "none";
+    paidCard.style.display = "none";
+    playingScreen.style.display = "flex";
+  }
+
   function setUI(state) {
+    playingScreen.style.display = "none";
+
     if (!pi) {
       publicCard.style.display = "";
       paidCard.style.display = "none";
@@ -279,9 +317,7 @@
   }
 
   buyBtn.addEventListener("click", () => {
-    // IMPORTANT: set this to whichever you are actually serving
-    // If your payment page is /pay (recommended): keep as is.
-    // If it is /pay.html: change to "/pay.html".
+    // set to your payment page route
     location.href = "/pay";
   });
 
@@ -312,8 +348,7 @@
     playBtn.disabled = true;
     await acquireWakeLock();
 
-    playingBox.style.display = "";
-    doneBox.style.display = "none";
+    showPlayingPageUI();
 
     audio.src = `/api/audio?pi=${encodeURIComponent(pi)}`;
     audio.controls = false;
@@ -322,19 +357,14 @@
     attachAntiPause();
 
     audio.addEventListener("ended", async () => {
-      playingBox.style.display = "none";
-      doneBox.style.display = "";
       try { if (wakeLock) await wakeLock.release(); } catch(_) {}
-
-      // Mark locally immediately
       markCompletedLocal();
 
-      // Mark server-side as consumed (so "once" is real across refreshes)
+      // mark server-side as consumed (once-only)
       try {
         await fetch("/api/complete", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          // Backwards-compatible with complete.js expecting { session_id }
           body: JSON.stringify({ session_id: pi })
         });
       } catch (_) {}
@@ -351,7 +381,9 @@
       console.error(e);
       alert("Could not start playback. Please try again.");
       playBtn.disabled = false;
-      playingBox.style.display = "none";
+      // return to pre-play screen if playback fails
+      playingScreen.style.display = "none";
+      paidCard.style.display = "";
     }));
   });
 
@@ -359,7 +391,6 @@
     if (!pi) { setUI("locked"); return; }
     try {
       const s = await refreshStatus();
-      // Expecting { ok, state } where state is "unlocked" / "locked" (your status.js)
       setUI(s.state || (s.paid ? "unlocked" : "locked"));
     } catch (e) {
       console.error(e);
@@ -371,4 +402,5 @@
 </script>
 </body>
 </html>
+
 
