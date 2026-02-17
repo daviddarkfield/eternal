@@ -34,6 +34,8 @@
       padding-left: 0.22em; /* optical centering */
     }
 
+    .small { opacity: 0.85; font-size: 13px; }
+
     .card {
       border: 1px solid rgba(255,255,255,0.18);
       border-radius: 14px;
@@ -74,6 +76,12 @@
     }
     .pill.ok { border-color: rgba(0,255,140,0.35); }
     .pill.bad { border-color: rgba(255,70,70,0.45); }
+
+    /* IMPORTANT:
+       Only the public card is centered.
+       The paid card stays left-aligned (normal) so it doesn't look "right-justified" or weird.
+    */
+    #publicCard { text-align: center; }
 
     /* Modal */
     .modalBack {
@@ -123,6 +131,9 @@
       50%  { opacity: 0.90; transform: scale(1.01); }
       100% { opacity: 0.20; transform: scale(0.99); }
     }
+
+    /* Center the buy button but keep hint centered too */
+    #publicHint { text-align: center; margin-top: 12px; }
   </style>
 </head>
 
@@ -133,31 +144,23 @@
       <div class="small">DARKFIELD</div>
     </div>
 
-<!-- Public / pre-payment -->
-<div class="card" id="publicCard" style="text-align:center;">
+    <!-- Public / pre-payment -->
+    <div class="card" id="publicCard">
+      <p class="small" style="margin:0 0 18px;">
+        “I want you to believe... to believe in things that you cannot.” — Bram Stoker
+      </p>
 
-  <p style="margin:0 0 14px;">
-    <strong></strong>
-  </p>
+      <div class="hr"></div>
 
-  <p class="small" style="margin:0 0 18px;">
-    “I want you to believe... to believe in things that you cannot.” — Bram Stoker
-  </p>
-
-  <div class="hr"></div>
-
-  <div style="margin-top:22px;">
-    <button class="btn" id="buyBtn">Listen now ($1.99)</button>
-  </div>
-
-</div>
-
-
-      <p class="small" id="publicHint" style="margin-top:12px; text-align:center;"></p>
+      <div style="margin-top:22px;">
+        <button class="btn" id="buyBtn">Listen now ($1.99)</button>
+      </div>
     </div>
 
-    <!-- Post-payment pre-play ritual -->
-    <div class="card" id="paidCard" style="display:none;">
+    <p class="small" id="publicHint"></p>
+
+    <!-- Post-payment pre-play ritual (LEFT aligned) -->
+    <div class="card" id="paidCard" style="display:none; text-align:left;">
       <div class="row" style="justify-content:space-between;">
         <div><strong>Unlocked</strong></div>
         <div class="pill ok" id="paidPill">Ready</div>
@@ -168,13 +171,13 @@
       <p><strong>Before you begin</strong></p>
       <ul>
         <li>Listen with headphones.</li>
-        <li>Go to the bedroom</li>
-        <li>switch your phone to DO NOT DISTURB.</li>
+        <li>Go to the bedroom.</li>
+        <li>Switch your phone to Do Not Disturb.</li>
       </ul>
 
       <p class="small">
         When you press play, the audio will run to the end.
-        You cannot pause or restart it once it begins.
+        You cannot pause or restart the audio once it begins.
       </p>
 
       <div class="row" style="margin-top:14px;">
@@ -206,7 +209,7 @@
       <h2>Final warning</h2>
       <p>
         ETERNAL will play through to the end.<br/>
-        DURATIION : 24 MINUTES<br/>
+        DURATION: 24 MINUTES<br/>
         You cannot pause or restart the audio once it begins.
       </p>
       <div class="row">
@@ -249,7 +252,6 @@
     localStorage.setItem(LS_COMPLETED_AT, String(Date.now()));
   }
 
-  // Reset only on pages.dev
   if (location.hostname.includes("pages.dev")) {
     resetBtn.style.display = "";
     resetBtn.addEventListener("click", () => {
@@ -411,4 +413,3 @@
 </script>
 </body>
 </html>
-
