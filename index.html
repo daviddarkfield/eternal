@@ -179,7 +179,7 @@
 
       <!-- CENTERED play button -->
       <div class="row centerRow" style="margin-top:14px;">
-        <button class="btn" id="playBtn">Play</button>
+        <button class="btn" id="playBtn" disabled>Authorising…</button>
       </div>
 
       <div style="margin-top:14px; display:none;" id="doneBox">
@@ -218,7 +218,6 @@
 <script>
 (() => {
   const LS_COMPLETED_AT = "eternal_completed_at_v1";
-  const LS_DEVICE_TOKEN = "eternal_device_token_v1";
 
   const qs = new URLSearchParams(location.search);
   const pi = qs.get("pi") || qs.get("payment_intent");
@@ -240,24 +239,15 @@
   const audio = document.getElementById("player");
   let wakeLock = null;
 
+  // Claim secret comes ONLY via URL fragment (not sent to server)
+  const hash = new URLSearchParams((location.hash || "").replace(/^#/, ""));
+  const claim = hash.get("c") || "";
+
   function isCompleted() {
     return Number(localStorage.getItem(LS_COMPLETED_AT) || "0") > 0;
   }
   function markCompletedLocal() {
     localStorage.setItem(LS_COMPLETED_AT, String(Date.now()));
-  }
-
-  function getDeviceToken() {
-    return (localStorage.getItem(LS_DEVICE_TOKEN) || "").trim();
-  }
-
-  function setDeviceToken(token) {
-    const t = String(token || "").trim();
-    if (!t) return;
-    try { localStorage.setItem(LS_DEVICE_TOKEN, t); } catch(_) {}
-    // Mirror into cookie so <audio src> can authenticate without custom headers.
-    // 1 year; Lax so it will be sent on same-site navigations.
-    document.cookie = `eternal_device=${encodeURIComponent(t)}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
   }
 
   function showModal(onConfirm) {
@@ -278,6 +268,26 @@
   async function refreshStatus() {
     if (!pi) return { ok: true, state: "locked" };
     return apiJson(`/api/status?pi=${encodeURIComponent(pi)}`, { method: "GET" });
+  }
+
+  function stripHash() {
+    // Remove #c=... from the address bar to reduce accidental sharing.
+    try {
+      if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+    } catch (_) {}
+  }
+
+  async function claimDeviceIfPresent() {
+    if (!pi) return;
+    if (!claim) return;
+
+    // Strip immediately (even before claim finishes) so “copy URL” won’t include the secret.
+    stripHash();
+
+    await apiJson(`/api/claim?pi=${encodeURIComponent(pi)}`, {
+      method: "POST",
+      headers: { "x-eternal-claim": claim }
+    });
   }
 
   function showPlayingPageUI() {
@@ -301,6 +311,7 @@
       paidCard.style.display = "";
       paidPill.textContent = "Completed";
       playBtn.disabled = true;
+      playBtn.textContent = "Play";
       doneBox.style.display = "";
       return;
     }
@@ -309,7 +320,7 @@
       publicCard.style.display = "none";
       paidCard.style.display = "";
       paidPill.textContent = "Ready";
-      playBtn.disabled = false;
+      // playBtn enabling is handled separately (after claim attempt)
       doneBox.style.display = "none";
       return;
     }
@@ -319,6 +330,7 @@
       paidCard.style.display = "";
       paidPill.textContent = "Completed";
       playBtn.disabled = true;
+      playBtn.textContent = "Play";
       doneBox.style.display = "";
       return;
     }
@@ -333,6 +345,11 @@
     publicCard.style.display = "";
     paidCard.style.display = "none";
     publicHint.textContent = "Processing…";
+  }
+
+  function setPlayEnabled(enabled) {
+    playBtn.disabled = !enabled;
+    playBtn.textContent = enabled ? "Play" : "Authorising…";
   }
 
   buyBtn.addEventListener("click", () => {
@@ -359,26 +376,14 @@
     audio.addEventListener("seeking", () => { audio.currentTime = lastTime || 0; });
   }
 
-  async function healDeviceTokenOnce() {
-    // Call /api/status to mint/return deviceToken; then store+cookie it.
-    const s = await refreshStatus();
-    if (s && s.deviceToken) setDeviceToken(s.deviceToken);
-    return s;
-  }
-
   async function beginPlayback() {
     if (isCompleted()) return;
     if (!pi) { alert("Missing payment reference. Please try again."); return; }
 
-    playBtn.disabled = true;
+    setPlayEnabled(false);
     await acquireWakeLock();
 
     showPlayingPageUI();
-
-    // Ensure we have a token cookie before we try to stream
-    if (!getDeviceToken()) {
-      try { await healDeviceTokenOnce(); } catch(_) {}
-    }
 
     audio.src = `/api/audio?pi=${encodeURIComponent(pi)}`;
     audio.controls = false;
@@ -404,17 +409,12 @@
     try {
       await audio.play();
     } catch (e) {
-      // If auth failed (token missing/mismatch), try one self-heal and retry once.
-      try {
-        await healDeviceTokenOnce();
-        await audio.play();
-      } catch (e2) {
-        console.error(e2);
-        alert("Could not start playback. Please disable Private Browsing and allow storage, then refresh.");
-        playBtn.disabled = false;
-        playingScreen.style.display = "none";
-        paidCard.style.display = "";
-      }
+      console.error(e);
+      alert("Could not start playback on this device. If you paid on another device, please return to that device to listen.");
+      // back to paid UI
+      playingScreen.style.display = "none";
+      paidCard.style.display = "";
+      setPlayEnabled(true);
     }
   }
 
@@ -423,25 +423,38 @@
     showModal(() => beginPlayback().catch(e => {
       console.error(e);
       alert("Could not start playback. Please try again.");
-      playBtn.disabled = false;
       playingScreen.style.display = "none";
       paidCard.style.display = "";
+      setPlayEnabled(true);
     }));
   });
 
   (async () => {
     if (!pi) { setUI("locked"); return; }
+
+    // Default: disable play until we've tried to claim (if claim present) and checked status.
+    setPlayEnabled(false);
+
     try {
+      // If we arrived from payment return_url, claim cookie using fragment secret.
+      // This is the ONLY path that binds the PI to this device.
+      try { await claimDeviceIfPresent(); } catch (e) { console.warn("claim failed", e); }
+
       const s = await refreshStatus();
-
-      // Self-heal: store token whenever status returns it.
-      if (s && s.deviceToken) setDeviceToken(s.deviceToken);
-
       setUI(s.state || (s.paid ? "unlocked" : "locked"));
+
+      // Enable play only if server says unlocked and we are not completed.
+      // Note: even if enabled, /api/audio will still enforce cookie binding.
+      if ((s.state === "unlocked" || s.paid) && !isCompleted() && s.state !== "consumed") {
+        setPlayEnabled(true);
+      } else {
+        setPlayEnabled(false);
+      }
     } catch (e) {
       console.error(e);
       setUI("locked");
       publicHint.textContent = "Could not verify payment right now. Please refresh.";
+      setPlayEnabled(false);
     }
   })();
 })();
