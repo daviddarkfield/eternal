@@ -218,6 +218,7 @@
 <script>
 (() => {
   const LS_COMPLETED_AT = "eternal_completed_at_v1";
+  const LS_DEVICE_TOKEN = "eternal_device_token_v1";
 
   const qs = new URLSearchParams(location.search);
   const pi = qs.get("pi") || qs.get("payment_intent");
@@ -244,6 +245,19 @@
   }
   function markCompletedLocal() {
     localStorage.setItem(LS_COMPLETED_AT, String(Date.now()));
+  }
+
+  function getDeviceToken() {
+    return (localStorage.getItem(LS_DEVICE_TOKEN) || "").trim();
+  }
+
+  function setDeviceToken(token) {
+    const t = String(token || "").trim();
+    if (!t) return;
+    try { localStorage.setItem(LS_DEVICE_TOKEN, t); } catch(_) {}
+    // Mirror into cookie so <audio src> can authenticate without custom headers.
+    // 1 year; Lax so it will be sent on same-site navigations.
+    document.cookie = `eternal_device=${encodeURIComponent(t)}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
   }
 
   function showModal(onConfirm) {
@@ -300,6 +314,15 @@
       return;
     }
 
+    if (state === "consumed") {
+      publicCard.style.display = "none";
+      paidCard.style.display = "";
+      paidPill.textContent = "Completed";
+      playBtn.disabled = true;
+      doneBox.style.display = "";
+      return;
+    }
+
     if (state === "locked") {
       publicCard.style.display = "";
       paidCard.style.display = "none";
@@ -336,6 +359,13 @@
     audio.addEventListener("seeking", () => { audio.currentTime = lastTime || 0; });
   }
 
+  async function healDeviceTokenOnce() {
+    // Call /api/status to mint/return deviceToken; then store+cookie it.
+    const s = await refreshStatus();
+    if (s && s.deviceToken) setDeviceToken(s.deviceToken);
+    return s;
+  }
+
   async function beginPlayback() {
     if (isCompleted()) return;
     if (!pi) { alert("Missing payment reference. Please try again."); return; }
@@ -344,6 +374,11 @@
     await acquireWakeLock();
 
     showPlayingPageUI();
+
+    // Ensure we have a token cookie before we try to stream
+    if (!getDeviceToken()) {
+      try { await healDeviceTokenOnce(); } catch(_) {}
+    }
 
     audio.src = `/api/audio?pi=${encodeURIComponent(pi)}`;
     audio.controls = false;
@@ -359,14 +394,28 @@
         await fetch("/api/complete", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ session_id: pi })
+          body: JSON.stringify({ pi })
         });
       } catch (_) {}
 
       location.href = "/thanks";
     }, { once: true });
 
-    await audio.play();
+    try {
+      await audio.play();
+    } catch (e) {
+      // If auth failed (token missing/mismatch), try one self-heal and retry once.
+      try {
+        await healDeviceTokenOnce();
+        await audio.play();
+      } catch (e2) {
+        console.error(e2);
+        alert("Could not start playback. Please disable Private Browsing and allow storage, then refresh.");
+        playBtn.disabled = false;
+        playingScreen.style.display = "none";
+        paidCard.style.display = "";
+      }
+    }
   }
 
   playBtn.addEventListener("click", () => {
@@ -384,6 +433,10 @@
     if (!pi) { setUI("locked"); return; }
     try {
       const s = await refreshStatus();
+
+      // Self-heal: store token whenever status returns it.
+      if (s && s.deviceToken) setDeviceToken(s.deviceToken);
+
       setUI(s.state || (s.paid ? "unlocked" : "locked"));
     } catch (e) {
       console.error(e);
