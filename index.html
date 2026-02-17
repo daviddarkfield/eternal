@@ -7,16 +7,32 @@
   <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
+
     body {
       margin: 0; padding: 0;
       background: #000; color: #fff;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       line-height: 1.45;
     }
+
     .wrap { max-width: 740px; margin: 0 auto; padding: 28px 18px 40px; }
+
+    /* Optical centering for spaced headings */
     .head { text-align: center; margin-bottom: 10px; }
-    h1 { font-size: 30px; letter-spacing: 0.08em; margin: 0 0 8px; }
-    .small { opacity: 0.85; font-size: 13px; }
+    .head h1{
+      font-size: 30px;
+      letter-spacing: 0.08em;
+      padding-left: 0.08em; /* optical centering */
+      margin: 0 0 8px;
+      line-height: 1.1;
+    }
+    .head .small{
+      opacity: 0.85;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+      padding-left: 0.22em; /* optical centering */
+    }
 
     .card {
       border: 1px solid rgba(255,255,255,0.18);
@@ -83,7 +99,6 @@
 
     /* “Playing page” */
     .playingScreen {
-      display: none;
       margin-top: 18px;
       border: 1px solid rgba(255,255,255,0.18);
       border-radius: 14px;
@@ -98,6 +113,7 @@
     .playingInner { display: flex; flex-direction: column; align-items: center; gap: 14px; }
     .playingWord {
       letter-spacing: 0.22em;
+      padding-left: 0.22em; /* optical centering */
       font-size: 14px;
       opacity: 0.85;
       animation: pulse 2.6s ease-in-out infinite;
@@ -267,7 +283,6 @@
   }
 
   function showPlayingPageUI() {
-    // "audio playing page": only header + pulsing PLAYING
     publicCard.style.display = "none";
     paidCard.style.display = "none";
     playingScreen.style.display = "flex";
@@ -317,7 +332,6 @@
   }
 
   buyBtn.addEventListener("click", () => {
-    // set to your payment page route
     location.href = "/pay";
   });
 
@@ -360,7 +374,6 @@
       try { if (wakeLock) await wakeLock.release(); } catch(_) {}
       markCompletedLocal();
 
-      // mark server-side as consumed (once-only)
       try {
         await fetch("/api/complete", {
           method: "POST",
@@ -381,7 +394,6 @@
       console.error(e);
       alert("Could not start playback. Please try again.");
       playBtn.disabled = false;
-      // return to pre-play screen if playback fails
       playingScreen.style.display = "none";
       paidCard.style.display = "";
     }));
@@ -402,5 +414,4 @@
 </script>
 </body>
 </html>
-
 
