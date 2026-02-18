@@ -58,11 +58,12 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
+      min-width: 190px; /* helps equalize button sizes */
     }
     .btn:hover { background: rgba(255,255,255,0.14); }
     .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content:center; }
     .hr { height: 1px; background: rgba(255,255,255,0.14); margin: 16px 0; }
 
     .pill {
@@ -80,8 +81,16 @@
     #publicCard { text-align: center; }
     #publicHint { text-align: center; margin-top: 12px; }
 
-    /* Center the Play button row (only) inside the paid card */
-    .centerRow { justify-content: center; }
+    /* Post-payment card: centered ritual text */
+    #paidCard { text-align: center; }
+    #paidCard ul{
+      list-style: none;
+      padding: 0;
+      margin: 10px 0 0;
+      display: inline-block;
+      text-align: center;
+    }
+    #paidCard li{ margin: 6px 0; }
 
     /* Modal */
     .modalBack {
@@ -101,6 +110,7 @@
       padding: 18px;
       background: #070707;
       box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+      text-align: center; /* center modal text */
     }
     .modal h2 { margin: 0 0 10px; font-size: 18px; }
     .modal p { margin: 0 0 14px; opacity: 0.9; }
@@ -156,29 +166,29 @@
 
     <p class="small" id="publicHint"></p>
 
-    <!-- Post-payment pre-play ritual (LEFT aligned for text) -->
-    <div class="card" id="paidCard" style="display:none; text-align:left;">
+    <!-- Post-payment pre-play ritual (NOW CENTERED) -->
+    <div class="card" id="paidCard" style="display:none;">
       <div class="row" style="justify-content:space-between;">
-        <div><strong>Unlocked</strong></div>
+        <div style="text-align:left;"><strong>Unlocked</strong></div>
         <div class="pill ok" id="paidPill">Ready</div>
       </div>
 
       <div class="hr"></div>
 
-      <p><strong>Before you begin</strong></p>
+      <p style="margin:0 0 8px;"><strong>Before you begin</strong></p>
       <ul>
         <li>Listen with headphones.</li>
         <li>Go to the bedroom.</li>
         <li>Switch your phone to Do Not Disturb.</li>
       </ul>
 
-      <p class="small">
+      <p class="small" style="margin:14px auto 0; max-width:520px;">
         When you press play, the audio will run to the end.
         You cannot pause or restart the audio once it begins.
       </p>
 
       <!-- CENTERED play button -->
-      <div class="row centerRow" style="margin-top:14px;">
+      <div class="row" style="margin-top:16px;">
         <button class="btn" id="playBtn" disabled>Authorising…</button>
       </div>
 
@@ -208,7 +218,7 @@
         DURATION: 24 MINUTES<br/>
         You cannot pause or restart the audio once it begins.
       </p>
-      <div class="row">
+      <div class="row" style="margin-top:10px;">
         <button class="btn" id="confirmBtn">I understand. Begin.</button>
         <button class="btn" id="cancelBtn">Not yet</button>
       </div>
@@ -320,7 +330,6 @@
       publicCard.style.display = "none";
       paidCard.style.display = "";
       paidPill.textContent = "Ready";
-      // playBtn enabling is handled separately (after claim attempt)
       doneBox.style.display = "none";
       return;
     }
@@ -411,7 +420,6 @@
     } catch (e) {
       console.error(e);
       alert("Could not start playback on this device. If you paid on another device, please return to that device to listen.");
-      // back to paid UI
       playingScreen.style.display = "none";
       paidCard.style.display = "";
       setPlayEnabled(true);
@@ -432,19 +440,14 @@
   (async () => {
     if (!pi) { setUI("locked"); return; }
 
-    // Default: disable play until we've tried to claim (if claim present) and checked status.
     setPlayEnabled(false);
 
     try {
-      // If we arrived from payment return_url, claim cookie using fragment secret.
-      // This is the ONLY path that binds the PI to this device.
       try { await claimDeviceIfPresent(); } catch (e) { console.warn("claim failed", e); }
 
       const s = await refreshStatus();
       setUI(s.state || (s.paid ? "unlocked" : "locked"));
 
-      // Enable play only if server says unlocked and we are not completed.
-      // Note: even if enabled, /api/audio will still enforce cookie binding.
       if ((s.state === "unlocked" || s.paid) && !isCompleted() && s.state !== "consumed") {
         setPlayEnabled(true);
       } else {
